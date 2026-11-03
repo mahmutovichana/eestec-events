@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// DRAFT: samo admin. PUBLISHED: javno, sve otvoreno. COMPLETED: javno, glasanje zatvoreno, feedback otvoren.
+// ARCHIVED: javno samo za čitanje preko linka, sve zatvoreno.
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ItemKind {
+  SESSION
+  TALK
+  BREAK
+  MEAL
+  END
+}
+
+enum QuestionType {
+  RATING
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  SHORT_TEXT
+  LONG_TEXT
+}
+
+enum FeedbackMode {
+  ANONYMOUS
+  IDENTIFIED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  auth0Sub      String   @unique
+  email         String
+  emailVerified Boolean  @default(false)
+  name          String
+  picture       String?
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastLoginAt   DateTime @default(now())
+
+  votes     LunchVote[]
+  responses FeedbackResponse[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model Project {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  name        String
+  description String         @default("")
+  location    String         @default("")
+  startsAt    DateTime?
+  endsAt      DateTime?
+  status      ProjectStatus  @default(DRAFT)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  agendas     Agenda[]
+  polls       LunchPoll[]
+  forms       FeedbackForm[]
+
+  @@index([status])
+}
+
+model Agenda {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  slug      String
+  title     String
+  dateLabel String       @default("")
+  position  Int          @default(0)
+  items     AgendaItem[]
+
+  @@unique([projectId, slug])
+}
+
+model AgendaItem {
+  id          String   @id @default(cuid())
+  agendaId    String
+  agenda      Agenda   @relation(fields: [agendaId], references: [id], onDelete: Cascade)
+  position    Int      @default(0)
+  startTime   String
+  endTime     String
+  title       String
+  description String   @default("")
+  speaker     String   @default("")
+  location    String   @default("")
+  notes       String   @default("")
+  kind        ItemKind @default(SESSION)
+
+  @@index([agendaId, position])
+}
+
+model LunchPoll {
+  id                  String        @id @default(cuid())
+  projectId           String
+  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title               String
+  description         String        @default("")
+  isOpen              Boolean       @default(true)
+  allowChange         Boolean       @default(true)
+  showResultsWhileOpen Boolean      @default(false)
+  options             LunchOption[]
+  votes               LunchVote[]
+
+  @@index([projectId])
+}
+
+model LunchOption {
+  id          String      @id @default(cuid())
+  pollId      String
+  poll        LunchPoll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  position    Int         @default(0)
+  name        String
+  description String      @default("")
+  allergens   String      @default("")
+  votes       LunchVote[]
+}
+
+// Glas prijavljenog korisnika: userId postavljen, jedinstven po anketi.
+// Stari anonimni glas (prije prelaska na račune): userId je NULL, voterHash/netHash postavljeni.
+model LunchVote {
+  id        String      @id @default(cuid())
+  pollId    String
+  poll      LunchPoll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    LunchOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  voterHash String?
+  netHash   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now()) @updatedAt
+
+  @@unique([pollId, userId])
+  @@unique([pollId, voterHash])
+  @@index([pollId, optionId])
+}
+
+model FeedbackForm {
+  id                 String             @id @default(cuid())
+  projectId          String
+  project            Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title              String
+  description        String             @default("")
+  isOpen             Boolean            @default(true)
+  mode               FeedbackMode       @default(ANONYMOUS)
+  oneResponsePerUser Boolean            @default(true)
+  questions          FeedbackQuestion[]
+  responses          FeedbackResponse[]
+
+  @@index([projectId])
+}
+
+model FeedbackQuestion {
+  id       String           @id @default(cuid())
+  formId   String
+  form     FeedbackForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  position Int              @default(0)
+  type     QuestionType
+  label    String
+  options  String[]         @default([])
+  required Boolean          @default(false)
+  enabled  Boolean          @default(true)
+  answers  FeedbackAnswer[]
+
+  @@index([formId, position])
+}
+
+// Za ANONYMOUS forme userId je uvijek NULL, a createdAt se zaokružuje na dan.
+// Za IDENTIFIED forme userId je postavljen, a (formId, userId) je jedinstven kad je uključeno jedno slanje po korisniku
+// (jedinstvenost se provjerava u aplikaciji unutar transakcije, jer je ovisna o postavci forme).
+model FeedbackResponse {
+  id        String           @id @default(cuid())
+  formId    String
+  form      FeedbackForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime         @default(now())
+  answers   FeedbackAnswer[]
+
+  @@index([formId])
+  @@index([userId])
+}
+
+model FeedbackAnswer {
+  id         String           @id @default(cuid())
+  responseId String
+  response   FeedbackResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId String
+  question   FeedbackQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  rating     Int?
+  text       String?
+  choices    String[]         @default([])
+
+  @@index([questionId])
+}
