@@ -33,7 +33,10 @@ export default async function LunchTab({ params }: { params: Promise<{ project: 
         const myOpt = mine.find((m) => m.pollId === poll.id)?.optionId ?? null;
         const total = poll.options.reduce((s, o) => s + o._count.votes, 0);
         const showResults = !open || poll.showResultsWhileOpen;
-        const maxVotes = Math.max(1, ...poll.options.map((o) => o._count.votes));
+        const live = poll.options.filter((o) => !o.archivedAt);
+        // Rezultati uključuju i arhivirane opcije koje imaju glasove, da zbir odgovara stvarnom broju glasova.
+        const shown = poll.options.filter((o) => !o.archivedAt || o._count.votes > 0);
+        const maxVotes = Math.max(1, ...shown.map((o) => o._count.votes));
         return (
           <section key={poll.id} className="panel" aria-labelledby={"p-" + poll.id}>
             <div className="panel-head">
@@ -50,10 +53,10 @@ export default async function LunchTab({ params }: { params: Promise<{ project: 
             ) : null}
 
             {open && user ? (
-              <PollClient pollId={poll.id} options={poll.options} current={myOpt} canChange={poll.allowChange} />
+              <PollClient pollId={poll.id} options={live} current={myOpt && live.some((o) => o.id === myOpt) ? myOpt : null} canChange={poll.allowChange} />
             ) : (
               <div>
-                {poll.options.map((o) => (
+                {live.map((o) => (
                   <div key={o.id} className={"opt static" + (myOpt === o.id ? " mine" : "")}>
                     <span>
                       <b>{o.name}{myOpt === o.id ? " · tvoj izbor" : ""}</b>
@@ -69,11 +72,11 @@ export default async function LunchTab({ params }: { params: Promise<{ project: 
             {showResults ? (
               <div className="results" style={{ marginTop: 22 }}>
                 <h3>Rezultati · {total} {total === 1 ? "glas" : "glasova"}</h3>
-                {poll.options.map((o) => {
+                {shown.map((o) => {
                   const pct = total ? Math.round((o._count.votes / total) * 100) : 0;
                   return (
                     <div className="bar-row" key={o.id}>
-                      <div className="top"><span>{o.name}</span><span>{o._count.votes} · {pct}%</span></div>
+                      <div className="top"><span>{o.name}{o.archivedAt ? " (uklonjeno iz ponude)" : ""}</span><span>{o._count.votes} · {pct}%</span></div>
                       <div className="track" role="img" aria-label={`${o.name}: ${o._count.votes} glasova, ${pct}%`}>
                         <div className="fill" style={{ width: (o._count.votes / maxVotes) * 100 + "%" }} />
                       </div>

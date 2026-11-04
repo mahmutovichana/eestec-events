@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
@@ -15,7 +15,7 @@ enum Role {
 }
 
 // DRAFT: samo admin. PUBLISHED: javno, sve otvoreno. COMPLETED: javno, glasanje zatvoreno, feedback otvoren.
-// ARCHIVED: javno samo za čitanje preko linka, sve zatvoreno.
+// ARCHIVED: javno samo za čitanje preko linka, sve zatvoreno. Dozvoljeni prelazi: src/lib/status.ts
 enum ProjectStatus {
   DRAFT
   PUBLISHED
@@ -63,6 +63,7 @@ model User {
   @@index([email])
 }
 
+// Jedan model za sve vrste događaja (HOBOM, JobFAIR, GA, radionice) i godine. Vidi docs/ARCHITECTURE.md.
 model Project {
   id          String         @id @default(cuid())
   slug        String         @unique
@@ -107,21 +108,23 @@ model AgendaItem {
   location    String   @default("")
   notes       String   @default("")
   kind        ItemKind @default(SESSION)
+  // Optimistično zaključavanje: uređivanje iz dva prozora ne smije tiho prepisati tuđu izmjenu.
+  version     Int      @default(0)
 
   @@index([agendaId, position])
 }
 
 model LunchPoll {
-  id                  String        @id @default(cuid())
-  projectId           String
-  project             Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title               String
-  description         String        @default("")
-  isOpen              Boolean       @default(true)
-  allowChange         Boolean       @default(true)
-  showResultsWhileOpen Boolean      @default(false)
-  options             LunchOption[]
-  votes               LunchVote[]
+  id                   String        @id @default(cuid())
+  projectId            String
+  project              Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title                String
+  description          String        @default("")
+  isOpen               Boolean       @default(true)
+  allowChange          Boolean       @default(true)
+  showResultsWhileOpen Boolean       @default(false)
+  options              LunchOption[]
+  votes                LunchVote[]
 
   @@index([projectId])
 }
@@ -134,17 +137,23 @@ model LunchOption {
   name        String
   description String      @default("")
   allergens   String      @default("")
+  // Opcija s glasovima se ne briše nego arhivira: glasovi ostaju u historiji i rezultatima.
+  archivedAt  DateTime?
   votes       LunchVote[]
+
+  @@unique([pollId, id])
 }
 
 // Glas prijavljenog korisnika: userId postavljen, jedinstven po anketi.
-// Stari anonimni glas (prije prelaska na račune): userId je NULL, voterHash/netHash postavljeni.
+// Stari anonimni glas (prije prelaska na račune): userId NULL, voterHash postavljen.
+// Glas čiji je korisnik naknadno obrisan: userId NULL i voterHash NULL.
+// Složeni strani ključ (pollId, optionId) u bazi garantuje da opcija pripada istoj anketi.
 model LunchVote {
   id        String      @id @default(cuid())
   pollId    String
   poll      LunchPoll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
   optionId  String
-  option    LunchOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  option    LunchOption @relation(fields: [pollId, optionId], references: [pollId, id], onDelete: NoAction)
   userId    String?
   user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   voterHash String?
@@ -155,6 +164,7 @@ model LunchVote {
   @@unique([pollId, userId])
   @@unique([pollId, voterHash])
   @@index([pollId, optionId])
+  @@index([userId])
 }
 
 model FeedbackForm {
@@ -173,23 +183,24 @@ model FeedbackForm {
 }
 
 model FeedbackQuestion {
-  id       String           @id @default(cuid())
-  formId   String
-  form     FeedbackForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
-  position Int              @default(0)
-  type     QuestionType
-  label    String
-  options  String[]         @default([])
-  required Boolean          @default(false)
-  enabled  Boolean          @default(true)
-  answers  FeedbackAnswer[]
+  id         String           @id @default(cuid())
+  formId     String
+  form       FeedbackForm     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  position   Int              @default(0)
+  type       QuestionType
+  label      String
+  options    String[]         @default([])
+  required   Boolean          @default(false)
+  enabled    Boolean          @default(true)
+  // Pitanje s odgovorima se ne briše nego arhivira, da historijska statistika ostane netaknuta.
+  archivedAt DateTime?
+  answers    FeedbackAnswer[]
 
+  @@unique([formId, id])
   @@index([formId, position])
 }
 
 // Za ANONYMOUS forme userId je uvijek NULL, a createdAt se zaokružuje na dan.
-// Za IDENTIFIED forme userId je postavljen, a (formId, userId) je jedinstven kad je uključeno jedno slanje po korisniku
-// (jedinstvenost se provjerava u aplikaciji unutar transakcije, jer je ovisna o postavci forme).
 model FeedbackResponse {
   id        String           @id @default(cuid())
   formId    String
@@ -199,19 +210,38 @@ model FeedbackResponse {
   createdAt DateTime         @default(now())
   answers   FeedbackAnswer[]
 
+  @@unique([formId, id])
   @@index([formId])
   @@index([userId])
 }
 
+// Odgovor čuva snimak pitanja u trenutku slanja (label, tip, opcije), pa kasnije izmjene pitanja
+// ne mijenjaju značenje historijskih odgovora. Složeni ključevi garantuju da pitanje i odgovor
+// pripadaju istoj formi, a (responseId, questionId) je jedinstven.
 model FeedbackAnswer {
-  id         String           @id @default(cuid())
-  responseId String
-  response   FeedbackResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  questionId String
-  question   FeedbackQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  rating     Int?
-  text       String?
-  choices    String[]         @default([])
+  id              String           @id @default(cuid())
+  formId          String
+  responseId      String
+  response        FeedbackResponse @relation(fields: [formId, responseId], references: [formId, id], onDelete: Cascade)
+  questionId      String
+  question        FeedbackQuestion @relation(fields: [formId, questionId], references: [formId, id], onDelete: NoAction)
+  questionLabel   String
+  questionType    QuestionType
+  questionOptions String[]         @default([])
+  rating          Int?
+  text            String?
+  choices         String[]         @default([])
 
+  @@unique([responseId, questionId])
   @@index([questionId])
+}
+
+// Distribuirano ograničenje brzine (radi na serverless instancama jer je stanje u bazi).
+// Ključ je HMAC identiteta (korisnik ili IP), nikad sirova IP adresa. Redovi se brišu nakon isteka prozora.
+model RateLimit {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+
+  @@index([windowStart])
 }

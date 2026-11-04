@@ -54,20 +54,6 @@ export function csvCell(v: unknown): string {
 }
 export const csvRow = (cells: unknown[]) => cells.map(csvCell).join(",");
 
-// Ograničenje brzine u memoriji jedne instance. Dopuna, ne zamjena, za autorizaciju i ograničenja u bazi.
-const buckets = new Map<string, { n: number; reset: number }>();
-export function rateLimit(key: string, max: number, windowMs: number): boolean {
-  const now = Date.now();
-  if (buckets.size > 5000) for (const [k, b] of buckets) if (b.reset < now) buckets.delete(k);
-  const b = buckets.get(key);
-  if (!b || b.reset < now) {
-    buckets.set(key, { n: 1, reset: now + windowMs });
-    return true;
-  }
-  b.n += 1;
-  return b.n <= max;
-}
-
 export function clientIp(req: Request): string {
   return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
 }

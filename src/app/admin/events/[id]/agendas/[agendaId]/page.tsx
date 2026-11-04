@@ -36,7 +36,7 @@ export default async function AgendaEditor({ params }: { params: Promise<{ id: s
       <h2 className="sect">Stavke <small>izmjene se čuvaju automatski · povuci ⠿ za redoslijed</small></h2>
       <ItemEditor
         agendaId={a.id}
-        initial={a.items.map((i) => ({ id: i.id, startTime: i.startTime, endTime: i.endTime, title: i.title, description: i.description, speaker: i.speaker, location: i.location, notes: i.notes, kind: i.kind }))}
+        initial={a.items.map((i) => ({ id: i.id, startTime: i.startTime, endTime: i.endTime, title: i.title, description: i.description, speaker: i.speaker, location: i.location, notes: i.notes, kind: i.kind, version: i.version }))}
       />
 
       <AForm action={createItem} className="panel" resetOnSuccess>
@@ -63,7 +63,7 @@ export default async function AgendaEditor({ params }: { params: Promise<{ id: s
 
       <section className="panel danger">
         <h2>Brisanje agende</h2>
-        <ConfirmButton action={deleteAgenda} fields={{ id: a.id }} title="Obrisati agendu?" message={`"${a.title}" i sve njene stavke bit će trajno obrisane.`} confirmLabel="Obriši agendu">
+        <ConfirmButton action={deleteAgenda} fields={{ id: a.id }} title="Obrisati agendu?" message={`"${a.title}" i njene stavke (${a.items.length}) bit će trajno obrisane.`} confirmLabel="Obriši agendu" phrase={a.items.length > 0 ? a.title : undefined}>
           Obriši agendu
         </ConfirmButton>
       </section>

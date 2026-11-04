@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ formId:
     where: { id: formId },
     include: {
       project: { select: { slug: true } },
-      questions: { orderBy: { position: "asc" } },
+      questions: { orderBy: [{ archivedAt: { sort: "asc", nulls: "first" } }, { position: "asc" }] },
       responses: { orderBy: { createdAt: "asc" }, include: { answers: true, user: { select: { name: true, email: true } } } },
     },
   });
@@ -22,7 +22,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ formId:
 
   const identified = form.mode === "IDENTIFIED";
   // Anonimna forma: u izvozu nema kolona o identitetu, a datum je zaokružen na dan.
-  const head = [...(identified ? ["Ime", "Email"] : []), identified ? "Poslano (UTC)" : "Datum", ...form.questions.map((q) => q.label)];
+  // Zaglavlje: trenutni tekst pitanja, uz oznaku arhive i raniji tekst ako su historijski odgovori dati pod drugačijim tekstom.
+  const headerOf = (q: (typeof form.questions)[number]) => {
+    const old = [...new Set(form.responses.flatMap((r) => r.answers.filter((a) => a.questionId === q.id).map((a) => a.questionLabel)))].filter((l) => l !== q.label);
+    return q.label + (q.archivedAt ? " [arhivirano]" : "") + (old.length ? ` [ranije: ${old.join(" | ")}]` : "");
+  };
+  const head = [...(identified ? ["Ime", "Email"] : []), identified ? "Poslano (UTC)" : "Datum", ...form.questions.map(headerOf)];
   const rows = form.responses.map((r) => {
     const cells = form.questions.map((q) => {
       const a = r.answers.find((x) => x.questionId === q.id);

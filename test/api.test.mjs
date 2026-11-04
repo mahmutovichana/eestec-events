@@ -274,14 +274,15 @@ test("Feedback: neispravan izbor i više izbora na jedan izbor se odbijaju", asy
   assert.equal((await fb("admin", formIdent.id, [{ questionId: qIdentRating, rating: 3 }, { questionId: qChoice1, choices: ["x", "y"] }], "IDENTIFIED")).status, 400);
 });
 
-test("Feedback: zatvorena forma 403, isključeno pitanje se ignoriše", async () => {
+test("Feedback: zatvorena forma 403, isključeno pitanje se odbija (409), ne upisuje", async () => {
   await db.feedbackForm.update({ where: { id: formAnon.id }, data: { isOpen: false } });
   assert.equal((await fb(undefined, formAnon.id, [{ questionId: qAnonRating, rating: 3 }], "ANONYMOUS")).status, 403);
   await db.feedbackForm.update({ where: { id: formAnon.id }, data: { isOpen: true } });
   await db.feedbackQuestion.update({ where: { id: qAnonRating }, data: { required: false } });
   const extra = await db.feedbackQuestion.create({ data: { formId: formAnon.id, type: "LONG_TEXT", label: "Isključeno", enabled: false, position: 9 } });
-  assert.equal((await fb(undefined, formAnon.id, [{ questionId: qAnonRating, rating: 3 }, { questionId: extra.id, text: "x" }], "ANONYMOUS")).status, 200);
+  assert.equal((await fb(undefined, formAnon.id, [{ questionId: qAnonRating, rating: 3 }, { questionId: extra.id, text: "x" }], "ANONYMOUS")).status, 409);
   assert.equal(await db.feedbackAnswer.count({ where: { questionId: extra.id } }), 0);
+  assert.equal((await fb(undefined, formAnon.id, [{ questionId: qAnonRating, rating: 3 }], "ANONYMOUS")).status, 200);
 });
 
 test("Feedback CSV: anonimna forma nema kolone identiteta, identificirana ih ima; formule su neutralizovane", async () => {

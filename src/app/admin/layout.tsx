@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <ToastProvider>
       <div className="shell">
         <aside className="side">
-          <Link href="/admin" className="brand" aria-label="Admin početna">
+          <Link href="/admin" className="brand">
             <img src="/eestec-logo.png" alt="EESTEC LC Sarajevo" />
             <span>Events</span>
           </Link>

@@ -25,7 +25,7 @@ export function Hero({
   actions?: React.ReactNode;
 }) {
   return (
-    <section className="hero">
+    <header className="hero">
       <div className="wrap">
         <div className="hero-top">
           <Logos />
@@ -45,7 +45,7 @@ export function Hero({
           {actions ? <div className="hero-actions">{actions}</div> : null}
         </div>
       </div>
-    </section>
+    </header>
   );
 }
 

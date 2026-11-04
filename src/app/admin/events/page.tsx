@@ -34,7 +34,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
           {events.map((p) => (
             <Link key={p.id} href={`/admin/events/${p.id}`} className="pcard">
               <span className={"pill " + p.status}>{STATUS_LABEL[p.status]}</span>
-              <h3>{p.name}</h3>
+              <h2>{p.name}</h2>
               <p>{[fmtDateRange(p.startsAt, p.endsAt), p.location].filter(Boolean).join(" · ") || "Bez datuma"}</p>
               <p>/e/{p.slug} · {p._count.agendas} agende · {p._count.polls} ankete · {p._count.forms} feedback</p>
             </Link>

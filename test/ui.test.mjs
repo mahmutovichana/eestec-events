@@ -157,7 +157,7 @@ test("Drag-and-drop mijenja redoslijed stavki", { skip }, async () => {
 
 test("Dugmad gore/dolje mijenjaju redoslijed, brisanje traži potvrdu", { skip }, async () => {
   await admin.reload({ waitUntil: "networkidle0" });
-  await (await admin.$$('button[aria-label="Pomjeri dolje"]'))[0].click();
+  await (await admin.$$('button[aria-label*="dolje"]'))[0].click();
   await waitText(admin, "Redoslijed je sačuvan");
   const items = await db.agendaItem.findMany({ where: { agendaId }, orderBy: { position: "asc" } });
   assert.deepEqual(items.map((i) => i.title), ["Uvod izmijenjen", "Pauza", "Panel"]);
@@ -313,7 +313,13 @@ test("Duplikat događaja kao šablon i brisanje s potvrdom", { skip }, async () 
   assert.ok(copy.forms[0].questions.length >= 9);
   assert.equal(copy.forms[0].responses.length, 0, "odgovori se ne kopiraju");
 
-  await Promise.all([admin.waitForNavigation({ waitUntil: "networkidle0" }), (async () => { await clickText(admin, "button", "Obriši događaj"); await admin.waitForSelector("dialog[open]"); await clickText(admin, "dialog[open] button", "Obriši trajno"); })()]);
+  await Promise.all([admin.waitForNavigation({ waitUntil: "networkidle0" }), (async () => {
+    await clickText(admin, "button", "Obriši događaj"); await admin.waitForSelector("dialog[open]");
+    const btn = await admin.evaluateHandle(() => [...document.querySelectorAll("dialog[open] button")].find((b) => b.textContent.includes("Obriši trajno")));
+    assert.ok(await btn.evaluate((b) => b.disabled), "bez upisa naziva dugme je onemogućeno");
+    await admin.type("dialog[open] input[type=text]", copy.name);
+    await clickText(admin, "dialog[open] button", "Obriši trajno");
+  })()]);
   assert.equal(await db.project.findUnique({ where: { id: copyId } }), null);
   assert.match(admin.url(), /\/admin\/events$/);
 });
@@ -367,7 +373,8 @@ test("Pristupačnost (osnovne provjere): slike imaju alt, kontrole imaju imena, 
     assert.ok(r.h1 <= 1, path + " više h1");
     assert.equal(r.lang, "bs");
   }
-  // Tastatura: dijalog se zatvara na Esc
+  // Tastatura: dijalog se zatvara na Esc (brisanje je dostupno samo iz Nacrta ili Arhive)
+  await db.project.update({ where: { id: eventId }, data: { status: "ARCHIVED" } });
   await p.goto(`${BASE}/admin/events/${eventId}`, { waitUntil: "networkidle0" });
   await clickText(p, "button", "Obriši događaj");
   await p.waitForSelector("dialog[open]");
