@@ -22,12 +22,12 @@ Prijava u UI testovima je **simulirana** (osam administratorskih računa je tako
 |---|---|
 | `tsc --noEmit` (frontend) | **PASS**, 0 grešaka |
 | `vite build` | **PASS** (JS 272 kB, 83 kB gzip; CSS 15 kB) |
-| `npm run sheets:test` | **PASS**: 94 testa, 94 prošla, 0 palo, 0 preskočeno |
+| `npm run sheets:test` | **PASS**: 95 testova, 95 prošlo, 0 palo, 0 preskočeno |
 | Backend (`backend.test.mjs`) | **PASS** 36/36 |
 | Autorizacija i administratori (`admins.test.mjs`) | **PASS** 25/25 |
 | Mapiranje migracije (`migration.test.mjs`) | **PASS** 5/5 |
 | Pravne stranice, statički (`legal.test.mjs`) | **PASS** 6/6 |
-| Browser (`e2e.test.mjs`, Chrome) | **PASS** 22/22 |
+| Browser (`e2e.test.mjs`, Chrome) | **PASS** 23/23 (uključuje test artefakta pod putanjom /eestec-events/) |
 | axe-core WCAG 2.0/2.1/2.2 A/AA + best-practice, 10 stranica × 2 širine (javne + admin) | **PASS**, 0 povreda (jedna povreda `target-size` je uhvaćena i ispravljena tokom rada) |
 | Bez horizontalnog scrolla, 8 stranica × 6 širina (320/375/390/768/1024/1440) | **PASS** |
 | `eslint` za `sheets/web` | **NOT RUN** (nije konfigurisan za ovaj podprojekt) |
@@ -59,6 +59,7 @@ Jedan UI test (cijeli admin tok) je bio nestabilan (1 od 3 pokretanja) zbog utrk
 | Ponašanje pri prekoračenju Google kvote | **NOT RUN** | ne može se bezbjedno izazvati; frontend prikazuje poruku za neočekivan odgovor |
 | Izvoz iz stvarne razvojne baze | **BLOCKED** | Docker nije bio pokrenut |
 | Čitač ekrana, stvarni mobilni uređaji | **NOT RUN** | ručna provjera; testirana emulacija i 6 širina |
-| GitHub Pages workflow | **NOT RUN** | izvršava se tek na GitHubu |
+| GitHub Pages workflow na GitHubu | **NOT RUN** | izvršava se tek na GitHubu; lokalno provjereno: valjan YAML, čist `npm ci` + build, artefakt pod `/eestec-events/` |
+| Javni URL-ovi na github.io | **FAIL u trenutku provjere** | `/`, `/privacy/`, `/terms/` vraćaju 404 dok se Pages ne uključi i workflow ne izvrši (SETUP.md korak 5a) |
 
 Prije stvarne upotrebe odradite „Korak 6: Provjera“ iz `SETUP.md`: to je zamjena za sve BLOCKED stavke.

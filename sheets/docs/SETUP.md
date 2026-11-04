@@ -45,50 +45,56 @@ Administratori su u listu **`Admins`** unutar tabele. Pri prvom pokretanju `setu
 - **`ADMIN_EMAIL_DOMAINS`**: ako ga postavite (npr. `eestec-sa.ba`), administrator može biti samo email iz tih domena (više domena odvojite zarezom). Provjerava se pri dodavanju **i** pri svakoj prijavi. Ako ga ne postavite, može se dodati bilo koji valjan Google email (npr. gmail).
 - **`ADMIN_REQUIRE_HD`**: samo vrijednost `true` ga uključuje. Tada token mora imati Workspace `hd` claim jednak domeni emaila. Uključujte ga samo ako su SVI administratori Google Workspace računi; račun bez `hd` claima (npr. gmail) bi bio odbijen. Bez ovoga nijedan listani administrator nije blokiran zbog domene.
 
-## Korak 3: Google Cloud (prijava)
+## Korak 3: Google Cloud (postojeći projekat i postojeći OAuth klijent)
 
-1. console.cloud.google.com pod `hana.mahmutovic@eestec-sa.ba` → **New Project**, `EESTEC Events`.
-2. **APIs & Services → OAuth consent screen** (ili „Google Auth Platform“):
-   - **User type: External** (da se može prijaviti bilo koji Google račun; učesnici nisu u vašem Workspaceu).
-   - App name `EESTEC Events`; support i developer email: `hana.mahmutovic@eestec-sa.ba`.
-   - **Scopes:** samo osnovni (`openid`, `email`, `profile`). Tako verifikacija aplikacije nije potrebna.
-   - **Publishing status: „Publish app“ (In production).** U „Testing“ stanju mogu se prijaviti samo ručno dodani test korisnici (najviše 100), a vi biste morali dodati i svih osam administratora.
-3. **Credentials → Create credentials → OAuth client ID**:
-   - Application type: **Web application**.
-   - **Authorized JavaScript origins** (samo domena, bez putanje i bez kose crte na kraju): `https://IMEKORISNIKA.github.io` (vaše GitHub ime malim slovima); lokalno opcionalno `http://localhost:5173`.
-   - **Authorized redirect URIs:** prazno.
-   - **Create**, kopirajte **Client ID**. Client secret ne trebate i ne unosite nigdje.
-4. Upišite `CLIENT_ID` u Script properties (korak 2.4).
+**Ne pravite novi projekat ni novi OAuth klijent.** Koristite one koji već postoje u konzoli. Prema stanju koje ste prijavili:
+
+| Postavka | Stanje | Šta radite |
+|---|---|---|
+| User type | External | ostaje |
+| Publishing status | Testing | promijenit ćete u „In production“ (korak 3c) |
+| Authorized JavaScript origin | `https://mahmutovichana.github.io` | **provjerite da je tačno ovako**: samo domena, `https`, bez putanje i bez kose crte na kraju. Putanja `/eestec-events/` se NE upisuje u origin |
+| Authorized redirect URIs | — | ostaje prazno (prijava ne koristi redirect) |
+| Homepage | `https://mahmutovichana.github.io/eestec-events/` | ostaje; vidi 3b |
+| Scopes | — | samo osnovni: `openid`, `email`, `profile`. Ne dodajte ništa drugo |
+
+1. console.cloud.google.com → izaberite postojeći projekat (onaj u kojem je OAuth klijent) → **Google Auth Platform → Clients** → otvorite postojeći **Web application** klijent.
+2. Provjerite origin iz tabele. Ako ste pri prvom unosu dodali i adresu s putanjom, obrišite je.
+3. Kopirajte **Client ID** (završava na `.apps.googleusercontent.com`). To je javna vrijednost; **client secret vam ne treba i ne upisuje se nigdje**.
+4. Upišite Client ID na dva mjesta: Script property `CLIENT_ID` (korak 2.4) i `clientId` u `sheets/web/public/config.js` (korak 5).
+5. Opcionalno za lokalni razvoj: dodajte origin `http://localhost:5173`.
+
+> Ne mogu vidjeti vašu Google Cloud konzolu: naziv/ID projekta i Client ID nisu zapisani u repozitoriju i ne smiju se izmišljati. Gornja tabela je ono što ste mi javili.
 
 ## Korak 3b: Branding (Google Auth Platform → Branding)
 
-Pravne stranice su dio aplikacije i moraju biti javno dostupne prije objave (korak 5). Unesite **tačno ove adrese** (zamijenite `IMEKORISNIKA`; zadnja kosa crta je obavezna):
+Poruka „Publish app je onemogućeno dok se ne završi Branding“ znači da obavezna polja nisu popunjena. Šta je šta:
 
-| Polje u Branding | Vrijednost |
-|---|---|
-| App name | `EESTEC Events` |
-| User support email | `hana.mahmutovic@eestec-sa.ba` |
-| App logo (opcionalno) | `sheets/web/public/eestec-logo.png` (kvadratni logo ≤ 1 MB; logo je razlog zašto Google može tražiti verifikaciju brenda, vidi dolje) |
-| **Application home page** | `https://IMEKORISNIKA.github.io/eestec-events/` |
-| **Application privacy policy link** | `https://IMEKORISNIKA.github.io/eestec-events/privacy/` |
-| **Application terms of service link** | `https://IMEKORISNIKA.github.io/eestec-events/terms/` |
-| Authorized domains | vidi ispod |
-| Developer contact information | `hana.mahmutovic@eestec-sa.ba` |
+| Polje | Status | Vrijednost |
+|---|---|---|
+| App name | **obavezno** | `EESTEC Events` |
+| User support email | **obavezno** | `hana.mahmutovic@eestec-sa.ba` |
+| Developer contact information | **obavezno** (isti odjeljak ili „Contact info“) | `hana.mahmutovic@eestec-sa.ba` |
+| App logo | opcionalno | `sheets/web/public/eestec-logo.png` (kvadratni, ≤ 1 MB). Logo može aktivirati verifikaciju brenda; preskočite ako želite izbjeći pregled |
+| **Application home page** | preporučeno; traži ga verifikacija | `https://mahmutovichana.github.io/eestec-events/` |
+| **Application privacy policy link** | preporučeno; traži ga verifikacija | `https://mahmutovichana.github.io/eestec-events/privacy/` |
+| **Application terms of service link** | preporučeno | `https://mahmutovichana.github.io/eestec-events/terms/` |
+| Authorized domains | traži se kada su gornji linkovi uneseni | `mahmutovichana.github.io` (vidi napomenu) |
 
-**Authorized domains i github.io:** Google traži da domene linkova budu u „Authorized domains“ i da ih posjedujete. `github.io` je zajednička domena koju ne možete verificirati kao svoju. Zato:
+Zadnja kosa crta na `/privacy/` i `/terms/` je obavezna (GitHub Pages služi mape).
 
-- **Preporučeno: vlastita poddomena** (račun Workspace organizacije već posjeduje `eestec-sa.ba`). U DNS-u dodajte `CNAME events → IMEKORISNIKA.github.io`, u GitHub **Settings → Pages → Custom domain** upišite `events.eestec-sa.ba` i uključite **Enforce HTTPS**. Tada su adrese:
-  - home page `https://events.eestec-sa.ba/`
-  - privacy `https://events.eestec-sa.ba/privacy/`
-  - terms `https://events.eestec-sa.ba/terms/`
-  - Authorized domains: `eestec-sa.ba`; Authorized JavaScript origin u koraku 3.3 postaje `https://events.eestec-sa.ba` (ne github.io).
-  - Domenu možda treba verificirati u Google Search Console (DNS TXT zapis) pod istim računom.
-- **Bez vlastite domene:** unesite github.io adrese iz tabele iznad i ostavite Authorized domains prazno. **Nije potvrđeno** da će Google to prihvatiti pri verifikaciji brenda. Za osnovne opsege (`openid`, `email`, `profile`) aplikacija se može objaviti („In production“) bez verifikacije, ali polja Branding i logo mogu pokrenuti pregled. Ako Google odbije, koristite vlastitu poddomenu.
+**Napomena o Authorized domains:** `github.io` je na listi javnih sufiksa, pa je „domena prvog nivoa“ vaše stranice `mahmutovichana.github.io`. Konzola traži da linkovi budu pod autorizovanom domenom; unesite `mahmutovichana.github.io`. Ako je odbije, probajte `github.io`. Nisam mogao provjeriti šta konzola prihvata (nemam pristup vašem projektu) i ne znam da li će Google pri verifikaciji brenda tražiti dokaz vlasništva koji se za github.io ne može dati. Za osnovne opsege se aplikacija može objaviti bez verifikacije; ako Google ipak traži vlasništvo, izlaz je vlastita poddomena (npr. `events.eestec-sa.ba`: DNS `CNAME events → mahmutovichana.github.io`, GitHub Pages → Custom domain, Enforce HTTPS, zatim zamijeniti sve URL-ove i origin u konzoli i u `config.js`).
 
-**Prije klika na „Publish app“:**
-1. Pravne stranice moraju biti objavljene (korak 5) i otvoriti se bez prijave: otvorite sva tri linka u anonimnom prozoru.
-2. U stranicama ne smije ostati nijedna žuta oznaka `[POTVRDITI]`: pročitajte `LEGAL.md` i donesite navedene odluke. Provjera: `grep -c 'class="confirm"' sheets/web/public/*/index.html` mora dati 0.
-3. Ne tražite osjetljive opsege; ostavite samo `openid`, `email`, `profile`.
+Redoslijed: stranice moraju biti **na mreži prije** nego što ih Google provjeri (korak 5a).
+
+## Korak 3c: Publish app
+
+Prije klika na **Publish app** (Audience → Publishing status → Publish app → Confirm):
+
+1. Sva tri URL-a iz 3b se otvaraju u anonimnom prozoru (korak 5a). Trenutno ne rade (vidi korak 5).
+2. U pravnim stranicama nema žutih oznaka `[POTVRDITI]`: `LEGAL.md`. Provjera: `grep -c 'class="confirm"' sheets/web/public/*/index.html` daje 0.
+3. Scope-ovi su samo `openid`, `email`, `profile`.
+4. Posljedica: u „Testing“ statusu mogu se prijaviti samo ručno dodani test korisnici (max 100); u „In production“ svaki Google račun. Aplikacija sa samo osnovnim opsezima ne bi trebala dobiti ekran „unverified app“, ali to nije testirano.
 
 ## Korak 4: Objava skripte kao web aplikacije (pod računom vlasnika)
 
@@ -105,16 +111,34 @@ Napomena: „Execute as: Me“ znači da skripta piše u tabelu kao vlasnik. Zat
 
 ## Korak 5: Frontend (GitHub Pages)
 
-1. U `sheets/web/public/config.js` upišite javne vrijednosti:
-   ```js
-   window.EESTEC_CONFIG = {
-     apiUrl: "https://script.google.com/macros/s/XXXXXXXX/exec",
-     clientId: "1234567890-abc.apps.googleusercontent.com"
-   };
-   ```
-2. GitHub → **Settings → Pages → Source: GitHub Actions**.
-3. Spojite u `main` (ili ručno **Actions → Objava sheets/web na GitHub Pages → Run workflow**). Adresa: `https://IMEKORISNIKA.github.io/eestec-events/`. Origin mora biti u koraku 3.3.
-   - Alternativa: `npm run sheets:build` i otpremiti `sheets/web/dist` na bilo koji statični hosting.
+**Trenutno stanje (provjereno HTTP zahtjevom): `https://mahmutovichana.github.io/eestec-events/`, `/privacy/` i `/terms/` vraćaju 404.** Razlog: GitHub Pages nije uključen s izvorom „GitHub Actions“, a radni tok objave postoji samo na grani `feat/sheets-simplification` (repozitorij je prije toga imao 0 registrovanih workflow-a). Dok se ovo ne riješi, homepage u Google konzoli pokazuje na stranicu koja ne postoji.
+
+### 5a. Pustiti stranicu na mrežu (prije Branding provjere)
+
+1. GitHub → repozitorij → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. **Settings → Environments → github-pages → Deployment branches**: dodajte `feat/sheets-simplification` (po zadanom je dozvoljen samo `main`; bez ovoga deploy posao pada s porukom o „environment protection rules“). Ovaj korak nije potreban nakon spajanja u `main`.
+3. Radni tok `.github/workflows/sheets-pages.yml` se pokreće pri svakom push-u na `main` ili `feat/sheets-simplification` koji mijenja `sheets/web/**`. Nakon uključenja Pages-a: **Actions** → zadnji run → **Re-run all jobs** (ili novi push).
+   - Posao „build“ radi `npm ci`, `npm run build` i provjerava da artefakt ima `privacy/`, `terms/` i `legal.css`. Daje **upozorenja** (ne greške) dok u pravnim stranicama ima oznaka `[POTVRDITI]` i dok `config.js` nema `apiUrl/clientId`. To je namjerno: stranice moraju biti na mreži da bi se uopće mogla riješiti Branding provjera.
+4. Provjerite u anonimnom prozoru (bez prijave):
+   - `https://mahmutovichana.github.io/eestec-events/`: naslov „Događaji“, opis i linkovi na Privatnost i Uslove (poruka „nije povezana sa serverom“ je normalna dok se ne završi 5b),
+   - `https://mahmutovichana.github.io/eestec-events/privacy/`,
+   - `https://mahmutovichana.github.io/eestec-events/terms/`.
+
+### 5b. Povezati aplikaciju sa serverom (nakon koraka 4)
+
+U `sheets/web/public/config.js` upišite javne vrijednosti, pa commit/push na istu granu (workflow ponovo objavljuje):
+```js
+window.EESTEC_CONFIG = {
+  apiUrl: "https://script.google.com/macros/s/XXXXXXXX/exec",   // Web app URL iz koraka 4
+  clientId: "XXXX.apps.googleusercontent.com"                     // Client ID postojećeg klijenta (korak 3)
+};
+```
+- Alternativa bez GitHub Pages-a: `npm run sheets:build` i `sheets/web/dist` na drugi statični hosting (onda se mijenja origin u konzoli).
+- Spajanje u `main` je vaša odluka; `main` još sadrži staru Next.js aplikaciju, a ovaj workflow ne dira ništa osim `sheets/web`.
+
+### Šta je provjereno lokalno, a šta nije
+- **PASS:** čist `npm ci` + `npm run build` iz commitovanih datoteka; YAML workflow-a je valjan; artefakt pod putanjom `/eestec-events/` (simulacija github.io, sve van putanje je 404) učitava skripte, stilove, logo, pravne stranice i preusmjerenja bez pokvarenih resursa.
+- **NOT RUN:** stvarno izvršavanje workflow-a na GitHubu, ograničenja okruženja `github-pages`, HTTPS i keširanje na github.io, Googleova provjera linkova.
 
 ## Korak 6: Provjera (obavezno, nije automatski testirano s pravim računima)
 
@@ -144,7 +168,8 @@ Ne postoji web adresa, tajna ni parametar kojim se ovo može pokrenuti izvana: z
 - [ ] Napraviti tabelu i zalijepiti kod pod `hana.mahmutovic@eestec-sa.ba` (korak 1–2)
 - [ ] Odobriti dozvole skripti i pokrenuti `setup` (2.5)
 - [ ] Google Cloud projekt: OAuth ekran External + Published, Web client ID (korak 3)
-- [ ] Popuniti Branding sa tačnim adresama (korak 3b), donijeti odluke iz `LEGAL.md`, tek onda „Publish app“
+- [ ] Uključiti Pages (izvor GitHub Actions) i dozvoliti granu u okruženju `github-pages` (korak 5a)
+- [ ] Popuniti Branding sa adresama iz 3b, donijeti odluke iz `LEGAL.md`, tek onda „Publish app“ (3c)
 - [ ] Objaviti web aplikaciju: Execute as Me, Anyone (korak 4)
 - [ ] Upisati `apiUrl` i `clientId` u `config.js`, uključiti GitHub Pages (korak 5)
 - [ ] Odraditi provjeru iz koraka 6 sa stvarnim računima (posebno svih osam administratora i jedan običan račun)

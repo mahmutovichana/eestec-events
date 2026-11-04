@@ -378,3 +378,43 @@ test("pravne stranice: čist browser (bez tokena), axe 0 povreda, bez horizontal
   }
   assert.deepEqual(bad, []);
 });
+
+test("GitHub Pages podputanja: stvarni artefakt (prazan config.js) radi pod /eestec-events/, bez prijave, bez pokvarenih resursa", T, async () => {
+  const http = await import("node:http");
+  const path = await import("node:path");
+  const dist = path.resolve(new URL("../web/dist", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
+  const PREFIX = "/eestec-events";
+  const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png" };
+  const server = http.createServer((req, res) => {
+    const u = new URL(req.url, "http://x");
+    if (!u.pathname.startsWith(PREFIX + "/")) { res.writeHead(404); return res.end("nope"); } // kao github.io: sve van podputanje je 404
+    let f = path.join(dist, u.pathname.slice(PREFIX.length));
+    if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, "index.html");
+    if (!f.startsWith(dist) || !fs.existsSync(f)) { res.writeHead(404); return res.end("nf"); }
+    res.writeHead(200, { "Content-Type": MIME[path.extname(f)] || "application/octet-stream" });
+    fs.createReadStream(f).pipe(res);
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${server.address().port}${PREFIX}`;
+  try {
+    const p = await browser.newPage();
+    const failed = [];
+    p.on("response", (r) => { if (r.status() >= 400 && r.url().startsWith("http://127.0.0.1")) failed.push(r.status() + " " + r.url()); });
+    p.on("requestfailed", (r) => { if (r.url().startsWith("http://127.0.0.1")) failed.push("FAILED " + r.url()); });
+    await p.goto(base + "/", { waitUntil: "networkidle0" });
+    const t = await text(p);
+    assert.match(t, /Događaji/);
+    assert.match(t, /Politici privatnosti/); // opis aplikacije i link vidljivi i bez povezanog servera
+    assert.match(t, /nije povezana sa serverom/); // prazan config.js: jasna poruka, ne bijeli ekran
+    await Promise.all([p.waitForNavigation(), p.click('footer nav a[href="./privacy/"]')]);
+    assert.equal(p.url(), base + "/privacy/");
+    assert.ok(await p.$eval("header img", (i) => i.complete && i.naturalWidth > 0), "logo se učitava na pravnoj stranici");
+    assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector("h1")).fontWeight), "900", "legal.css se učitava");
+    await Promise.all([p.waitForNavigation(), p.click('footer a[href="../terms/"]')]);
+    assert.equal(p.url(), base + "/terms/");
+    await p.goto(base + "/#/privacy", { waitUntil: "networkidle0" });
+    assert.equal(p.url(), base + "/privacy/");
+    assert.deepEqual(failed, []);
+    await p.close();
+  } finally { await new Promise((r) => server.close(r)); }
+});

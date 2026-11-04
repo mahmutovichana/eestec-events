@@ -1,9 +1,10 @@
 # Objavljuje jednostavnu verziju (sheets/web) na GitHub Pages. Pokreće se samo kad se promijeni sheets/web.
-# Prije prvog pokretanja: Settings → Pages → Source = "GitHub Actions". Vidi sheets/docs/SETUP.md.
+# Prije prvog pokretanja: Settings → Pages → Source = "GitHub Actions" i (dok kod nije u main) Settings → Environments → github-pages →
+# Deployment branches → dodati feat/sheets-simplification. Vidi sheets/docs/SETUP.md, korak 5.
 name: Objava sheets/web na GitHub Pages
 on:
   push:
-    branches: [main]
+    branches: [main, feat/sheets-simplification]
     paths: ["sheets/web/**", ".github/workflows/sheets-pages.yml"]
   workflow_dispatch:
 
@@ -30,6 +31,16 @@ jobs:
         working-directory: sheets/web
       - run: npm run build
         working-directory: sheets/web
+      - name: Provjeri artefakt (pravne stranice i konfiguracija)
+        working-directory: sheets/web
+        run: |
+          test -f dist/index.html && test -f dist/privacy/index.html && test -f dist/terms/index.html && test -f dist/legal.css
+          if grep -q 'class="confirm"' dist/privacy/index.html dist/terms/index.html; then
+            echo "::warning::Pravne stranice još sadrže oznake [POTVRDITI]. Ne šaljite ih Googleu na verifikaciju dok se ne riješe (sheets/docs/LEGAL.md)."
+          fi
+          if grep -Eq 'apiUrl: *"",|clientId: *""' dist/config.js; then
+            echo "::warning::dist/config.js nema apiUrl/clientId: aplikacija će prikazati da nije povezana sa serverom."
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: sheets/web/dist

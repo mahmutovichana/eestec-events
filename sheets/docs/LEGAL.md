@@ -4,9 +4,9 @@ Stranice su **statični HTML** u `sheets/web/public/` (nema JavaScripta, nema no
 
 | Stranica | Putanja u projektu | Adresa na GitHub Pages |
 |---|---|---|
-| Politika privatnosti (BS + EN) | `sheets/web/public/privacy/index.html` | `https://IMEKORISNIKA.github.io/eestec-events/privacy/` |
-| Uslovi korištenja (BS + EN) | `sheets/web/public/terms/index.html` | `https://IMEKORISNIKA.github.io/eestec-events/terms/` |
-| Početna (home page) | aplikacija | `https://IMEKORISNIKA.github.io/eestec-events/` |
+| Politika privatnosti (BS + EN) | `sheets/web/public/privacy/index.html` | `https://mahmutovichana.github.io/eestec-events/privacy/` |
+| Uslovi korištenja (BS + EN) | `sheets/web/public/terms/index.html` | `https://mahmutovichana.github.io/eestec-events/terms/` |
+| Početna (home page) | aplikacija | `https://mahmutovichana.github.io/eestec-events/` |
 
 Zadnji `/` je obavezan (GitHub Pages ih služi kao mape). `#/privacy` i `#/terms` unutar aplikacije preusmjeravaju na iste stranice. Podnožje aplikacije i prozor za prijavu imaju linkove na obje. Stil: `legal.css`, ista paleta kao aplikacija.
 

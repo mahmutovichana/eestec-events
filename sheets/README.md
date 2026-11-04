@@ -19,7 +19,7 @@ Zamjena za složenu arhitekturu (Next.js, PostgreSQL, Prisma, Auth0, Vercel). Is
 ```
 npm run sheets:build     # izgradi frontend (sheets/web/dist)
 npm run sheets:dev       # lokalni server s lažnim Googleom na http://127.0.0.1:8787
-npm run sheets:test      # 94 testa (backend, administratori, migracija, Chrome UI)
+npm run sheets:test      # 95 testova (backend, administratori, migracija, Chrome UI)
 ```
 
 U dev serveru prijava se simulira u konzoli preglednika: `localStorage.eestecTestToken = "<ispisani token>"`. Ovo radi samo uz lažni server; pravi backend takav token odbija.

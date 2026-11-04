@@ -7,17 +7,24 @@ import { ErrorBox, Spinner, STATUS_LABEL, duration, fmtRange, useAction, useLoad
 export function Home({ nav }: { nav: (to: string) => void }) {
   const { me } = useAuth();
   const { data, error, loading, reload } = useLoad(() => call<{ events: EventRow[]; settings: Record<string, string> }>("listPublishedEvents"), [me.loggedIn]);
-  if (loading) return <Spinner />;
-  if (error) return <ErrorBox error={error} retry={reload} />;
+  const intro = (
+    <div className="intro">
+      <h1>Događaji</h1>
+      <p>Agende, ručak i feedback za EESTEC LC Sarajevo događaje na jednom mjestu.</p>
+      <p className="muted">
+        Događaje i agende možete pregledati bez prijave. Prijava Google računom (samo ime, email i Google ID) koristi se isključivo za glasanje za ručak i identificirani feedback.
+        Više u <a href="./privacy/">Politici privatnosti</a> i <a href="./terms/">Uslovima korištenja</a>.
+      </p>
+    </div>
+  );
+  if (loading) return <>{intro}<Spinner /></>;
+  if (error) return <>{intro}<ErrorBox error={error} retry={reload} /></>;
   const evs = data!.events;
   const current = evs.filter((e) => e.status !== "ARCHIVED");
   const past = evs.filter((e) => e.status === "ARCHIVED");
   return (
     <>
-      <div className="intro">
-        <h1>Događaji</h1>
-        <p>Agende, ručak i feedback za EESTEC LC Sarajevo događaje na jednom mjestu.</p>
-      </div>
+      {intro}
       {!evs.length && <div className="empty"><h2>Trenutno nema objavljenih događaja</h2><p>Provjerite ponovo uskoro.</p></div>}
       <ul className="cards" aria-label="Događaji">
         {current.map((e) => <EventCard key={e.id} e={e} nav={nav} />)}
