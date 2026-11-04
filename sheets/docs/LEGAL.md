@@ -16,28 +16,39 @@ Stranice su dvojezične (bosanski + engleski) jer Google pregled traži da polit
 
 Svaka tvrdnja o ponašanju aplikacije ima automatsku provjeru u `sheets/test/legal.test.mjs` (poredi tekst s kodom): 6 sati za brojač anonimnog slanja, 5 minuta za keš tokena, anonimno vrijeme se zaokružuje na dan, profilna slika se ne koristi, nema kolačića ni analitike, server kontaktira samo Google `tokeninfo`, `sessionStorage`/`localStorage` upotreba. Ako promijenite kod, promijenite i stranice, inače test pada.
 
-## Odluke koje organizacija MORA potvrditi prije objave
+## Potvrđene odluke (već u tekstu)
 
-Stranice **ne izmišljaju** rokove, pravni osnov ni organizacijske politike. Na svakom mjestu gdje je potrebna odluka stoji žuta oznaka `[POTVRDITI: …]` (BS) / `[CONFIRM: …]` (EN). Trenutno: 16 oznaka u privatnosti, 10 u uslovima (svaka odluka je ponovljena u oba jezika).
+| Odluka | Gdje u tekstu |
+|---|---|
+| Operativni kontakt za privatnost: `hana.mahmutovic@eestec-sa.ba` (odgovorna osoba; **nije** pravni rukovalac) | Privatnost §1, §8; Uslovi §8 |
+| Lični podaci se čuvaju najviše **dvije godine (24 mjeseca)**; poslije toga anonimizacija (`RETENTION.md`) | Privatnost §6 |
+| Zahtjeve za brisanje obrađuje bilo koji trenutno ovlašteni administrator | Privatnost §8 |
+| Google tabela je privatna i u vlasništvu organizacijskog računa | Privatnost §4 |
+
+## Odluke koje organizacija MORA još donijeti
+
+Stranice **ne izmišljaju** pravni naziv, adresu, pravni osnov, nadležnost ni druge rokove. Ostaje žuta oznaka `[POTVRDITI: …]` (BS) / `[CONFIRM: …]` (EN) i upozorenje **NACRT / DRAFT** na vrhu obje stranice, sve dok se ne riješe. Trenutno: 14 oznaka u privatnosti (uključujući 2 u upozorenju) i 10 u uslovima; svaka odluka je ponovljena u oba jezika.
 
 | # | Odluka | Gdje |
 |---|---|---|
-| 1 | Tačan pravni naziv i adresa rukovaoca podacima; da li je to EESTEC LC Sarajevo ili druga EESTEC jedinica | Privatnost §1, Uslovi §1 |
-| 2 | Adresa za zahtjeve o privatnosti (sada `hr@eestec-sa.ba`, što je i javni kontakt iz `Settings`) | Privatnost §1, §8, Uslovi §8 |
-| 3 | Pravni osnov obrade i primjenjivi propis (npr. saglasnost korisnika; da li se primjenjuje GDPR i/ili zakon BiH o zaštiti ličnih podataka) | Privatnost §3 |
-| 4 | **Rokovi čuvanja** za: glasove s imenima/emailovima, identificirane odgovore, anonimne odgovore, događaje i agende, neaktivne administratore; ko i kada briše | Privatnost §6 |
-| 5 | Rok i odgovorna osoba za zahtjeve o brisanju/pristupu | Privatnost §8 |
-| 6 | Nadležno tijelo za žalbe (zaštita podataka) | Privatnost §8 |
+| 1 | **Pravni rukovalac podacima**: tačan pravni naziv, registrovana adresa, i da li je to EESTEC LC Sarajevo ili druga EESTEC jedinica. (Odvojeno od operativnog kontakta iz tabele iznad.) | Privatnost §1, Uslovi §1 |
+| 2 | Da li je `hana.mahmutovic@eestec-sa.ba` i opća adresa za pitanja o uslovima | Uslovi §8 |
+| 3 | **Pravni osnov** obrade i primjenjivi propis (npr. saglasnost; GDPR i/ili zakon BiH) | Privatnost §3 |
+| 4 | Raspored provođenja roka čuvanja i odgovorna osoba; rokovi za administratorske zapise nakon deaktivacije i za dnevnik revizije | Privatnost §6 |
+| 5 | Rok obrade zahtjeva (pristup/brisanje) | Privatnost §8 |
+| 6 | Nadležno tijelo za žalbe | Privatnost §8 |
 | 7 | Ciljna publika i minimalna dob | Privatnost §10 |
 | 8 | Tekst ograničenja odgovornosti (preporuka: pravni savjet) | Uslovi §6 |
-| 9 | Mjerodavno pravo i nadležni sud | Uslovi §7 |
+| 9 | **Mjerodavno pravo i nadležni sud** | Uslovi §7 |
 
-Kad odluke donesete, zamijenite oznake konačnim tekstom (`<mark class="confirm">…</mark>` obrišite zajedno sa zagradama) obrišite i žutu „Napomenu za organizaciju / Note for the organisation“ na vrhu obje stranice (`<div class="notice" role="note">…</div>`) i ažurirajte datum „Zadnje ažuriranje“. Test `legal.test.mjs` namjerno **ne** pada zbog oznaka (da ne blokira razvoj); ispisuje njihov broj. Prije slanja Googleu provjerite da ih nema: `grep -c 'class="confirm"' sheets/web/public/*/index.html` mora dati 0.
+Kad odluke donesete, zamijenite oznake konačnim tekstom (`<mark class="confirm">…</mark>` obrišite zajedno sa zagradama), obrišite žuti okvir „NACRT / DRAFT“ na vrhu obje stranice (`<div class="notice" role="note">…</div>`) i ažurirajte datum „Zadnje ažuriranje“. Test `legal.test.mjs` namjerno **ne** pada zbog oznaka; ispisuje njihov broj, a workflow daje upozorenje dok ih ima. Provjera da ih nema: `grep -c 'class="confirm"' sheets/web/public/*/index.html` mora dati 0.
+
+> **Pažnja:** Google aplikacija je već „In production“ i pokazuje na ove stranice koje su trenutno označene kao NACRT. To je poštena, ali privremena situacija: što prije donesite odluke 1, 3, 9 i uklonite oznake.
 
 ## Poznata ograničenja trenutnog stanja (zapisana u politici)
 
-- Aplikacija **nema samoposlužno brisanje**; zahtjeve rješava administrator ručno u tabeli (politika to kaže).
+- Aplikacija **nema samoposlužno brisanje**; odobrene zahtjeve obrađuje administrator kroz aplikaciju (anonimizacija ili potpuno brisanje, uz dnevnik revizije; politika to kaže).
 - Anonimni odgovori se ne mogu povezati s osobom, pa se ne mogu ni obrisati na zahtjev (politika to kaže).
-- Aplikacija ne briše ništa automatski (osim keša). Dok rokove ne odredite, politika kaže da rokovi nisu određeni.
+- Aplikacija ne briše ništa automatski (osim keša). Rok od 24 mjeseca provodi se ručno (Čuvanje podataka); raspored je otvorena odluka.
 - Prosljeđivanje IP adrese Googleu (učitavanje prijave i fontova) i GitHubu (hosting) je navedeno u politici (§7).
 - Ovo nije pravni savjet: pregled politike i uslova preporučujemo prije objave.

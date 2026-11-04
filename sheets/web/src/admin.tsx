@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { call } from "./api";
 import { useAuth, GoogleSignIn } from "./auth";
 import type { Agenda, EventData, EventRow, Form, Item, Poll, Question, Stats } from "./types";
-import { Confirm, ErrorBox, Spinner, STATUS_LABEL, TRANSITIONS, download, fmtRange, useAction, useLoad, useToast } from "./ui";
+import { Confirm, ErrorBox, Spinner, STATUS_LABEL, TRANSITIONS, download, fmtDate, fmtRange, useAction, useLoad, useToast } from "./ui";
 
 type Nav = (to: string) => void;
 
@@ -39,7 +39,7 @@ export function AdminHome({ nav }: { nav: Nav }) {
         <div className="span2"><button className="btn primary" disabled={busy}>Kreiraj događaj</button></div>
       </form>
       <h2 className="section">Svi događaji</h2>
-      <p className="actions"><a className="tab" href="#/admin/_admini" onClick={(e) => { e.preventDefault(); nav("/admin/_admini"); }}>Administratori</a> <a className="tab" href="#/admin/_uvoz" onClick={(e) => { e.preventDefault(); nav("/admin/_uvoz"); }}>Uvoz podataka iz stare aplikacije</a></p>
+      <p className="actions"><a className="tab" href="#/admin/_podaci" onClick={(e) => { e.preventDefault(); nav("/admin/_podaci"); }}>Čuvanje podataka</a> <a className="tab" href="#/admin/_admini" onClick={(e) => { e.preventDefault(); nav("/admin/_admini"); }}>Administratori</a> <a className="tab" href="#/admin/_uvoz" onClick={(e) => { e.preventDefault(); nav("/admin/_uvoz"); }}>Uvoz podataka iz stare aplikacije</a></p>
       {!data!.events.length && <div className="empty"><h2>Još nema događaja</h2><p>Kreirajte prvi iznad.</p></div>}
       <ul className="cards">
         {data!.events.map((e) => (
@@ -98,6 +98,93 @@ export function AdminAdmins({ nav }: { nav: Nav }) {
       </section>
       {confirm && <Confirm title="Deaktivirati administratora?" text={`${confirm.email} gubi administratorski pristup odmah.${confirm.email === me.email ? " Ovo je vaš račun: nećete više moći ući u administraciju." : ""}`} confirmLabel="Deaktiviraj" onCancel={() => setConfirm(null)}
         onConfirm={async () => { const a = confirm; setConfirm(null); await setActive(a, false); }} />}
+    </>
+  );
+}
+
+// ───────── čuvanje podataka i zahtjevi za brisanje ─────────
+type RetentionPreview = { months: number; cutoff: string; votes: number; responses: number; oldest: string | null; inactiveAdmins: number };
+type UserPreview = { votes: number; responses: number; answers: number; isAdmin: boolean };
+type AuditEntry = { at: string; actor: string; action: string; detail: Record<string, unknown> };
+const AUDIT_LABEL: Record<string, string> = { "retention.anonymize": "Anonimizacija po roku čuvanja", "erasure.anonymize": "Zahtjev za brisanje (anonimizacija)", "erasure.delete": "Zahtjev za brisanje (brisanje)", "admin.add": "Dodan administrator", "admin.activate": "Aktiviran administrator", "admin.deactivate": "Deaktiviran administrator" };
+
+export function AdminData({ nav }: { nav: Nav }) {
+  const { busy, run } = useAction();
+  const audit = useLoad(() => call<{ entries: AuditEntry[]; total: number }>("listAudit"), []);
+  const [prev, setPrev] = useState<RetentionPreview | null>(null);
+  const [confirmRet, setConfirmRet] = useState(false);
+  const [email, setEmail] = useState("");
+  const [ref, setRef] = useState("");
+  const [mode, setMode] = useState<"ANONYMIZE" | "DELETE">("ANONYMIZE");
+  const [user, setUser] = useState<(UserPreview & { email: string }) | null>(null);
+  const [confirmUser, setConfirmUser] = useState(false);
+  const check = async () => { setPrev(await run(() => call<RetentionPreview>("previewRetention")) ?? null); };
+  const lookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const r = await run(() => call<UserPreview>("previewUserData", { email }));
+    setUser(r ? { ...r, email } : null);
+  };
+  return (
+    <>
+      <div className="crumbs"><a href="#/admin" onClick={(e) => { e.preventDefault(); nav("/admin"); }}>← Svi događaji</a></div>
+      <div className="intro"><h1>Čuvanje podataka</h1><p>Lični podaci se čuvaju najviše 24 mjeseca. Ništa se ne briše automatski: svaku radnju pokrećete ručno i upisuje se u dnevnik.</p></div>
+
+      <section className="panel" aria-labelledby="ret-h">
+        <h2 id="ret-h">Rok čuvanja</h2>
+        <p className="desc">Pregled pokazuje koliko glasova i identificiranih odgovora je starije od roka. Anonimizacija briše ime, email i Google ID; zbirni rezultati i odgovori ostaju. Slobodan tekst odgovora se ne mijenja.</p>
+        <div className="actions"><button className="btn ghost" disabled={busy} onClick={check}>Provjeri zapise starije od roka</button></div>
+        {prev && (
+          <div className="notice" role="status">
+            <p><b>{prev.votes}</b> glasova i <b>{prev.responses}</b> identificiranih odgovora starije od {prev.months} mjeseci (prije {fmtDate(prev.cutoff.slice(0, 10))}).{prev.oldest && <> Najstariji: {fmtDate(prev.oldest.slice(0, 10))}.</>}</p>
+            {prev.inactiveAdmins > 0 && <p className="muted">Deaktiviranih administratora: {prev.inactiveAdmins} (rok za njih još nije određen; ne dira ih se).</p>}
+            {prev.votes + prev.responses > 0 && <button className="btn danger" disabled={busy} onClick={() => setConfirmRet(true)}>Anonimiziraj {prev.votes + prev.responses} zapisa…</button>}
+          </div>
+        )}
+      </section>
+
+      <section className="panel" aria-labelledby="req-h">
+        <h2 id="req-h">Odobren zahtjev za brisanje</h2>
+        <p className="desc">Obrađujte samo zahtjeve koje je organizacija odobrila. Unesite email osobe, pogledajte broj zapisa, pa izaberite način.</p>
+        <form className="inline" onSubmit={lookup}>
+          <label className="field grow">Email osobe<input required type="email" maxLength={254} value={email} onChange={(e) => { setEmail(e.target.value); setUser(null); }} /></label>
+          <button className="btn ghost" disabled={busy}>Pogledaj</button>
+        </form>
+        {user && (
+          <div className="notice" role="status">
+            <p>Pronađeno: <b>{user.votes}</b> glasova, <b>{user.responses}</b> identificiranih odgovora ({user.answers} stavki odgovora).</p>
+            {user.isAdmin && <p className="muted">Osoba je i administrator: administratorski zapis se ne dira ovim postupkom.</p>}
+            {user.votes + user.responses === 0 ? <p>Nema šta obrisati.</p> : (
+              <>
+                <label className="field">Način
+                  <select value={mode} onChange={(e) => setMode(e.target.value as "ANONYMIZE" | "DELETE")}>
+                    <option value="ANONYMIZE">Anonimizacija (ukloni identitet, zadrži odgovore i rezultate)</option>
+                    <option value="DELETE">Potpuno brisanje glasova i odgovora te osobe</option>
+                  </select>
+                </label>
+                <label className="field">Oznaka zahtjeva (npr. datum ili broj; bez ličnih podataka)<input required maxLength={100} value={ref} onChange={(e) => setRef(e.target.value)} /></label>
+                <button className="btn danger" disabled={busy || !ref.trim()} onClick={() => setConfirmUser(true)}>Obradi zahtjev…</button>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="panel" aria-labelledby="aud-h">
+        <h2 id="aud-h">Dnevnik revizije</h2>
+        {audit.loading ? <Spinner /> : audit.error ? <ErrorBox error={audit.error} retry={audit.reload} /> : !audit.data!.entries.length ? <p className="muted">Još nema zapisa.</p> : (
+          <ul className="opts-admin">
+            {audit.data!.entries.map((a, i) => (
+              <li key={i}><div><b>{AUDIT_LABEL[a.action] ?? a.action}</b><small> · {a.at.slice(0, 16).replace("T", " ")} · {a.actor}{typeof a.detail.votes === "number" ? ` · glasova: ${a.detail.votes}, odgovora: ${a.detail.responses}` : ""}{typeof a.detail.requestRef === "string" ? ` · zahtjev: ${a.detail.requestRef}` : ""}{typeof a.detail.email === "string" ? ` · ${a.detail.email}` : ""}</small></div></li>
+            ))}
+          </ul>
+        )}
+        <p className="muted">U dnevnik se ne upisuje email osobe čiji se podaci brišu, samo skraćeni hash i broj zapisa.</p>
+      </section>
+
+      {confirmRet && prev && <Confirm title="Anonimizirati zapise starije od roka?" text={`Ime, email i Google ID uklanjaju se iz ${prev.votes} glasova i ${prev.responses} odgovora. Ovo se ne može poništiti (osim kroz historiju verzija Google tabele).`} phrase="ANONIMIZIRAJ" confirmLabel="Anonimiziraj" onCancel={() => setConfirmRet(false)}
+        onConfirm={async (typed) => { setConfirmRet(false); const r = await run(() => call("applyRetention", { confirm: typed, expectedVotes: prev.votes, expectedResponses: prev.responses }), "Anonimizirano"); if (r) { setPrev(null); audit.reload(); } }} />}
+      {confirmUser && user && <Confirm title={mode === "DELETE" ? "Potpuno obrisati podatke osobe?" : "Anonimizirati podatke osobe?"} text={`${user.votes} glasova i ${user.responses} odgovora osobe ${user.email}. Ovo se ne može poništiti (osim kroz historiju verzija Google tabele).`} phrase="OBRIŠI" confirmLabel="Potvrdi" onCancel={() => setConfirmUser(false)}
+        onConfirm={async (typed) => { setConfirmUser(false); const r = await run(() => call("eraseUserData", { email: user.email, mode, requestRef: ref, confirm: typed, expectedVotes: user.votes, expectedResponses: user.responses }), "Zahtjev je obrađen"); if (r) { setUser(null); setEmail(""); setRef(""); audit.reload(); } }} />}
     </>
   );
 }

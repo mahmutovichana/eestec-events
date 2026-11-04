@@ -30,7 +30,8 @@ var SCHEMA = {
   FeedbackResponses: ['id', 'formId', 'submissionId', 'userSub', 'userEmail', 'userName', 'createdAt'],
   FeedbackAnswers: ['id', 'responseId', 'formId', 'questionId', 'questionLabel', 'questionType', 'questionOptions', 'value'],
   Settings: ['key', 'value'],
-  Admins: ['email', 'active', 'addedAt', 'addedBy', 'sub']
+  Admins: ['email', 'active', 'addedAt', 'addedBy', 'sub'],
+  AuditLog: ['at', 'actor', 'action', 'detail']
 };
 // Početni administratori. Upisuju se SAMO pri prvoj inicijalizaciji (vidi seedAdmins_), nikad ponovo.
 var INITIAL_ADMINS = [
@@ -420,11 +421,12 @@ function addAdmin(p) {
   var email = normEmail_(p.email);
   if (where_('Admins', function (r) { return r.email.toLowerCase() === email; }).length) fail_('CONFLICT', 'Administrator s tom adresom već postoji (možda je deaktiviran: aktivirajte ga u listi).');
   append_('Admins', [{ email: email, active: true, addedAt: now_(), addedBy: me.email, sub: '' }]);
+  audit_(me.email, 'admin.add', { email: email });
   return { email: email };
 }
 
 function setAdminActive(p) {
-  requireAdmin_(p);
+  var me = requireAdmin_(p);
   var email = normEmail_(p.email);
   var active = bool_(p.active, 'active');
   var row = where_('Admins', function (r) { return r.email.toLowerCase() === email; })[0];
@@ -433,6 +435,7 @@ function setAdminActive(p) {
   if (!active && activeAdmins_().length <= 1) fail_('CONFLICT', 'Ne možete deaktivirati posljednjeg aktivnog administratora.');
   row.active = active;
   save_('Admins', row);
+  audit_(me.email, active ? 'admin.activate' : 'admin.deactivate', { email: email });
   return { email: email, active: active };
 }
 
@@ -1000,7 +1003,7 @@ function importSeed(p) {
   var report = {};
   Object.keys(SCHEMA).forEach(function (name) {
     var rows = data[name];
-    if (!Array.isArray(rows) || name === 'Settings' || name === 'Admins') return;
+    if (!Array.isArray(rows) || name === 'Settings' || name === 'Admins' || name === 'AuditLog') return;
     if (rows.length > 2000) fail_('BAD_REQUEST', 'Previše redova u ' + name + '.');
     var have = {};
     read_(name).forEach(function (r) { have[r.id] = 1; });
@@ -1015,6 +1018,125 @@ function importSeed(p) {
     report[name] = { added: add.length, skipped: rows.length - add.length };
   });
   return { report: report };
+}
+
+// ───────────────────────── čuvanje podataka, zahtjevi za brisanje, revizija ─────────────────────────
+
+var RETENTION_MONTHS = 24;
+var ANON_PREFIX = 'anonymized:';
+var CONFIRM_ANON = 'ANONIMIZIRAJ';
+
+/** Dnevnik revizije (list AuditLog): samo dodavanje redova. Ne sadrži emailove osoba čiji se podaci brišu (samo hash). */
+function audit_(actor, action, detail) {
+  append_('AuditLog', [{ at: now_(), actor: actor || '', action: action, detail: JSON.stringify(detail || {}) }]);
+}
+
+function listAudit(p) {
+  requireAdmin_(p);
+  var rows = read_('AuditLog');
+  return { entries: rows.slice(-100).reverse().map(function (r) { return { at: r.at, actor: r.actor, action: r.action, detail: parseJson_(r.detail, {}) }; }), total: rows.length };
+}
+
+function retentionCutoff_() {
+  var d = new Date();
+  d.setUTCMonth(d.getUTCMonth() - RETENTION_MONTHS);
+  return d.toISOString();
+}
+function votePersonal_(v) {
+  if (v.userEmail || v.userName && v.userName !== 'Anonimni (stari glas)') return true;
+  return !!v.userSub && v.userSub.indexOf(ANON_PREFIX) !== 0 && v.userSub.indexOf('legacy:') !== 0;
+}
+function responsePersonal_(r) { return !!(r.userSub || r.userEmail || r.userName); }
+
+/** Redovi sa ličnim podacima starije od roka čuvanja. Rok računa SERVER (klijent ga ne može skratiti). */
+function retentionScan_() {
+  var cut = retentionCutoff_();
+  var votes = where_('Votes', function (v) { return votePersonal_(v) && (v.updatedAt || v.createdAt) < cut; });
+  var resps = where_('FeedbackResponses', function (r) { return responsePersonal_(r) && r.createdAt < cut; });
+  return { cut: cut, votes: votes, responses: resps };
+}
+function anonymizeVote_(v) { v.userSub = ANON_PREFIX + uuid_(); v.userEmail = ''; v.userName = ''; save_('Votes', v); }
+function anonymizeResponse_(r) { r.userSub = ''; r.userEmail = ''; r.userName = ''; r.createdAt = String(r.createdAt).slice(0, 10) + 'T00:00:00.000Z'; save_('FeedbackResponses', r); }
+
+/** Pregled bez ikakve izmjene: koliko redova je starije od roka čuvanja. */
+function previewRetention(p) {
+  requireAdmin_(p);
+  var s = retentionScan_();
+  var oldest = s.votes.map(function (v) { return v.updatedAt || v.createdAt; }).concat(s.responses.map(function (r) { return r.createdAt; })).sort()[0] || null;
+  return { months: RETENTION_MONTHS, cutoff: s.cut, votes: s.votes.length, responses: s.responses.length, oldest: oldest,
+    inactiveAdmins: where_('Admins', function (r) { return !r.active; }).length };
+}
+
+/**
+ * Uklanja identitet (anonimizacija) iz zapisa starijih od roka. NIKAD se ne pokreće samo: traži admina, tačan broj iz pregleda i frazu.
+ * Zbirni rezultati ostaju; brišu se samo ime, email i Google ID. Slobodan tekst odgovora se ne mijenja (može sadržavati lične podatke: vidi zahtjev za brisanje).
+ */
+function applyRetention(p) {
+  var me = requireAdmin_(p);
+  if (p.confirm !== CONFIRM_ANON) fail_('BAD_REQUEST', 'Za potvrdu upišite ' + CONFIRM_ANON + '.');
+  var s = retentionScan_();
+  if (p.expectedVotes !== s.votes.length || p.expectedResponses !== s.responses.length) fail_('CONFLICT', 'Stanje se promijenilo od pregleda. Ponovite pregled.');
+  if (!s.votes.length && !s.responses.length) fail_('CONFLICT', 'Nema zapisa starijih od roka čuvanja.');
+  s.votes.forEach(anonymizeVote_);
+  s.responses.forEach(anonymizeResponse_);
+  audit_(me.email, 'retention.anonymize', { months: RETENTION_MONTHS, cutoff: s.cut, votes: s.votes.length, responses: s.responses.length });
+  return { votes: s.votes.length, responses: s.responses.length, cutoff: s.cut };
+}
+
+function userRows_(email) {
+  var votes = where_('Votes', function (v) { return v.userEmail.toLowerCase() === email; });
+  var subs = {};
+  votes.forEach(function (v) { subs[v.userSub] = 1; });
+  var resps = where_('FeedbackResponses', function (r) { return r.userEmail.toLowerCase() === email; });
+  resps.forEach(function (r) { subs[r.userSub] = 1; });
+  // isti Google račun može imati drugi email u starijim zapisima: poveži po sub-u
+  votes = where_('Votes', function (v) { return subs[v.userSub] === 1 && v.userSub.indexOf(ANON_PREFIX) !== 0 && v.userSub.indexOf('legacy:') !== 0; });
+  resps = where_('FeedbackResponses', function (r) { return r.userSub && subs[r.userSub] === 1; });
+  return { votes: votes, responses: resps };
+}
+
+/** Pregled podataka jedne osobe (za zahtjev za pristup/brisanje): samo brojevi, bez sadržaja. */
+function previewUserData(p) {
+  requireAdmin_(p);
+  var email = normEmail_(p.email);
+  var u = userRows_(email);
+  return { votes: u.votes.length, responses: u.responses.length,
+    answers: where_('FeedbackAnswers', function (a) { return u.responses.some(function (r) { return r.id === a.responseId; }); }).length,
+    isAdmin: where_('Admins', function (r) { return r.email.toLowerCase() === email; }).length > 0 };
+}
+
+/**
+ * Obrada ODOBRENOG zahtjeva za brisanje. ANONYMIZE: uklanja identitet, zadržava zbirne rezultate i odgovore.
+ * DELETE: briše glasove i identificirane odgovore te osobe zajedno s odgovorima (potrebno kad slobodan tekst može sadržavati lične podatke).
+ * Lista Admins se ne dira (deaktivirajte administratora u aplikaciji, pa obrišite red ručno ako je potrebno).
+ * U dnevnik ide samo hash osobe i broj zapisa, nikad email.
+ */
+function eraseUserData(p) {
+  var me = requireAdmin_(p);
+  var email = normEmail_(p.email);
+  var mode = enum_(p.mode, ['ANONYMIZE', 'DELETE'], 'Način');
+  var ref = str_(p.requestRef, 100, true, 'Oznaka zahtjeva');
+  if (p.confirm !== CONFIRM_PHRASE) fail_('BAD_REQUEST', 'Za potvrdu upišite ' + CONFIRM_PHRASE + '.');
+  var u = userRows_(email);
+  if (p.expectedVotes !== u.votes.length || p.expectedResponses !== u.responses.length) fail_('CONFLICT', 'Stanje se promijenilo od pregleda. Ponovite pregled.');
+  if (!u.votes.length && !u.responses.length) fail_('NOT_FOUND', 'Nema zapisa za tu adresu.');
+  var answers = 0;
+  if (mode === 'ANONYMIZE') {
+    u.votes.forEach(anonymizeVote_);
+    u.responses.forEach(anonymizeResponse_);
+  } else {
+    var ids = {};
+    u.responses.forEach(function (r) { ids[r.id] = 1; });
+    var ans = where_('FeedbackAnswers', function (a) { return ids[a.responseId] === 1; });
+    answers = ans.length;
+    remove_('FeedbackAnswers', ans);
+    remove_('FeedbackResponses', where_('FeedbackResponses', function (r) { return ids[r.id] === 1; }));
+    var vids = {};
+    u.votes.forEach(function (v) { vids[v.id] = 1; });
+    remove_('Votes', where_('Votes', function (v) { return vids[v.id] === 1; }));
+  }
+  audit_(me.email, 'erasure.' + mode.toLowerCase(), { subject: sha_(salt_() + email).slice(0, 16), requestRef: ref, votes: u.votes.length, responses: u.responses.length, answers: answers });
+  return { votes: u.votes.length, responses: u.responses.length, mode: mode };
 }
 
 // ───────────────────────── web app ulazne tačke ─────────────────────────
@@ -1038,7 +1160,12 @@ var ACTIONS = {
   manageFeedbackForm: { fn: manageFeedbackForm, write: true },
   getAdminStatistics: { fn: getAdminStatistics, write: false },
   exportResults: { fn: exportResults, write: false },
-  importSeed: { fn: importSeed, write: true }
+  importSeed: { fn: importSeed, write: true },
+  previewRetention: { fn: previewRetention, write: false },
+  applyRetention: { fn: applyRetention, write: true },
+  previewUserData: { fn: previewUserData, write: false },
+  eraseUserData: { fn: eraseUserData, write: true },
+  listAudit: { fn: listAudit, write: false }
 };
 
 function handle_(p) {

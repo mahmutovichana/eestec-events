@@ -126,17 +126,26 @@ Napomena: „Execute as: Me“ znači da skripta piše u tabelu kao vlasnik. Zat
    - `https://mahmutovichana.github.io/eestec-events/privacy/`,
    - `https://mahmutovichana.github.io/eestec-events/terms/`.
 
-### 5b. Povezati aplikaciju sa serverom (nakon koraka 4)
+### 5b. Povezivanje aplikacije sa serverom (urađeno)
 
-U `sheets/web/public/config.js` upišite javne vrijednosti, pa commit/push na istu granu (workflow ponovo objavljuje):
+`sheets/web/public/config.js` već sadrži stvarne **javne** vrijednosti (nisu tajne):
 ```js
 window.EESTEC_CONFIG = {
-  apiUrl: "https://script.google.com/macros/s/XXXXXXXX/exec",   // Web app URL iz koraka 4
-  clientId: "XXXX.apps.googleusercontent.com"                     // Client ID postojećeg klijenta (korak 3)
+  apiUrl: "https://script.google.com/macros/s/AKfycbwpYF8pnhqES7ximj08kqoL5KKbmD-lo6R4v18oE5eSxqhM1s8ufmvoPly3lW7EPQhU/exec",
+  clientId: "406203316711-fn9te97d8n67ff5gelc2e6cssnacvml2.apps.googleusercontent.com"
 };
 ```
+- Promjena bilo čega u `sheets/web/**` na `feat/sheets-simplification` ili `main` pokreće novu objavu.
 - Alternativa bez GitHub Pages-a: `npm run sheets:build` i `sheets/web/dist` na drugi statični hosting (onda se mijenja origin u konzoli).
 - Spajanje u `main` je vaša odluka; `main` još sadrži staru Next.js aplikaciju, a ovaj workflow ne dira ništa osim `sheets/web`.
+
+### Ažuriranje backenda (obavezno nakon svake promjene `Code.gs`)
+
+Stvarni deployment trenutno vrti verziju sa više administratora, **bez** čuvanja podataka/dnevnika revizije. Za nove funkcije (Administracija → Čuvanje podataka):
+1. Apps Script → zamijenite sadržaj `Code.gs` novim.
+2. Izaberite funkciju `setup` → Run (pravi list `AuditLog`; ne dira administratore ni postavke; dozvole se ne traže ponovo).
+3. **Deploy → Manage deployments → ✏ → Version: New version → Deploy.** URL se ne mijenja; bez ovoga web aplikacija vrti staru verziju.
+4. Provjera: `node sheets/scripts/real-smoke.mjs` (12 provjera) i lista u `INTEGRATION-CHECKLIST.md`.
 
 ### Šta je provjereno lokalno, a šta nije
 - **PASS:** čist `npm ci` + `npm run build` iz commitovanih datoteka; YAML workflow-a je valjan; artefakt pod putanjom `/eestec-events/` (simulacija github.io, sve van putanje je 404) učitava skripte, stilove, logo, pravne stranice i preusmjerenja bez pokvarenih resursa.
@@ -164,6 +173,16 @@ window.EESTEC_CONFIG = {
 Ne postoji web adresa, tajna ni parametar kojim se ovo može pokrenuti izvana: zahtijeva pristup editoru skripte, tj. isto povjerenje kao vlasništvo nad skriptom.
 
 **Administrator ne može ući iako je na listi, a prije je mogao** (npr. račun je obrisan i ponovo napravljen s istom adresom, pa ima drugi Google ID): u Script properties dodajte `RESET_BINDING_EMAIL` = njegova adresa, pokrenite **`resetAdminBinding`**. Veza se briše i svojstvo se samo uklanja; sljedeća prijava veže novi ID.
+
+## Šta zahtijeva vaš Google/GitHub pristup (ne mogu ga uraditi umjesto vas)
+
+| Radnja | Račun |
+|---|---|
+| Dozvoliti granu u okruženju `github-pages`, ponovo pokrenuti deploy (5a) | admin GitHub repozitorija |
+| Objaviti novi `Code.gs` kao novu verziju deploymenta i pokrenuti `setup` | hana.mahmutovic@eestec-sa.ba |
+| Prijava sa svih 8 administratorskih računa i jednog običnog računa (`INTEGRATION-CHECKLIST.md`, C) | svaki administrator + test račun |
+| Donijeti preostale pravne odluke (`LEGAL.md`) i ukloniti oznake `[POTVRDITI]` | EESTEC |
+| Odrediti raspored provođenja roka čuvanja (`RETENTION.md`) | EESTEC |
 
 ## Šta zahtijeva vašu ručnu akciju
 

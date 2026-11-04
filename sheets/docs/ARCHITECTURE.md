@@ -46,6 +46,7 @@ Svaki red ima stabilan `id` (UUID); veze su preko ID-ova, nikad preko broja reda
 | FeedbackAnswers | id, responseId, formId, questionId, questionLabel, questionType, questionOptions, value |
 | Settings | key, value (javno čitljivo samo: siteTitle, organization, contactEmail) |
 | Admins | email, active, addedAt, addedBy, sub (privatno; samo admin akcije; vidi SECURITY.md) |
+| AuditLog | at, actor, action, detail (samo dodavanje; vidi RETENTION.md) |
 
 Administratori su namjerno odvojeni od vlasništva nad tabelom: skripta radi kao vlasnik (`Execute as: Me`), a ko je administrator određuje samo list `Admins`. Ostali administratori ne trebaju pristup Drive-u.
 
@@ -64,7 +65,7 @@ Slojevi pravila (u kodu, jer Sheets nema ograničenja):
 
 Javno (bez prijave): `listPublishedEvents`, `getEvent` (nacrt je 404; rezultati po pravilima vidljivosti), `submitFeedback` (anonimne forme).
 Prijavljen korisnik: `whoami`, `submitVote`, `submitFeedback` (identificirane forme).
-Samo admin: `listAdmins`, `addAdmin`, `setAdminActive`, `listAllEvents`, `createEvent`, `updateEvent`, `deleteOrArchiveEvent`, `manageAgenda`, `manageAgendaItems`, `managePoll`, `manageFeedbackForm`, `getAdminStatistics`, `exportResults`, `importSeed`.
+Samo admin: `previewRetention`, `applyRetention`, `previewUserData`, `eraseUserData`, `listAudit`, `listAdmins`, `addAdmin`, `setAdminActive`, `listAllEvents`, `createEvent`, `updateEvent`, `deleteOrArchiveEvent`, `manageAgenda`, `manageAgendaItems`, `managePoll`, `manageFeedbackForm`, `getAdminStatistics`, `exportResults`, `importSeed`.
 
 Odgovor je uvijek `{ok:true,data}` ili `{ok:false,error:{code,message}}` (HTTP 200, to je ograničenje Apps Scripta). Kodovi: `BAD_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, CONFLICT, CLOSED, MODE_CHANGED, RATE_LIMITED, BUSY, CONFIG, INTERNAL`.
 

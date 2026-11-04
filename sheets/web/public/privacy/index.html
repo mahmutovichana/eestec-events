@@ -19,12 +19,12 @@
   <h1>Politika privatnosti</h1>
   <p class="meta">Privacy Policy · Zadnje ažuriranje / Last updated: 2026-11-04</p>
   <nav class="lang" aria-label="Jezik / Language"><a href="#bs" hreflang="bs">Bosanski</a><a href="#en" hreflang="en">English</a></nav>
-  <div class="notice" role="note"><b>Napomena za organizaciju / Note for the organisation:</b> žuto označena mjesta <mark class="confirm">[POTVRDITI]</mark> su odluke koje organizacija još mora potvrditi prije objave. / Yellow <mark class="confirm">[CONFIRM]</mark> markers are decisions the organisation must still confirm before publishing.</div>
+  <div class="notice" role="note"><b>NACRT / DRAFT.</b> Ovaj tekst još nije konačan: žuto označena mjesta <mark class="confirm">[POTVRDITI]</mark> su odluke koje EESTEC tek treba donijeti ili potvrditi. Potvrđeno: operativni kontakt, rok čuvanja od 24 mjeseca za lične podatke, obrada zahtjeva od strane ovlaštenih administratora, privatna Google tabela. / This text is not final: yellow <mark class="confirm">[CONFIRM]</mark> markers are decisions EESTEC still has to make or confirm. Confirmed: operational contact, 24-month retention of personal data, requests handled by authorised administrators, private Google Sheet.</div>
 
 <section id="bs" lang="bs">
   <h2>1. Ko smo</h2>
-  <p>Aplikaciju „EESTEC Events“ (agende, anketa za ručak i feedback za događaje) vodi <b>EESTEC LC Sarajevo</b> (u daljem tekstu „mi“). <mark class="confirm">[POTVRDITI: tačan pravni naziv i adresa organizacije koja je rukovalac podacima, te da li je rukovalac EESTEC LC Sarajevo ili neka druga EESTEC jedinica]</mark></p>
-  <p>Kontakt za pitanja o privatnosti i zahtjeve: <a href="mailto:hr@eestec-sa.ba">hr@eestec-sa.ba</a> <mark class="confirm">[POTVRDITI: da li je ovo ispravna adresa za zahtjeve o privatnosti]</mark></p>
+  <p>Aplikaciju „EESTEC Events“ (agende, anketa za ručak i feedback za događaje) vodi <b>EESTEC LC Sarajevo</b> (u daljem tekstu „mi“). <b>Pravni rukovalac podacima</b> (pravno lice koje odgovara za obradu): <mark class="confirm">[POTVRDITI: tačan pravni naziv, registrovana adresa i da li je rukovalac EESTEC LC Sarajevo ili druga EESTEC jedinica]</mark></p>
+  <p><b>Operativni kontakt za privatnost</b> (osoba koja rješava svakodnevne zahtjeve; to nije isto što i pravni rukovalac): <a href="mailto:hana.mahmutovic@eestec-sa.ba">hana.mahmutovic@eestec-sa.ba</a></p>
 
   <h2>2. Koje podatke obrađujemo</h2>
   <div class="tw" tabindex="0" role="region" aria-label="Tabela: koje podatke obrađujemo"><table>
@@ -36,6 +36,7 @@
       <tr><td>Identificirani feedback</td><td>Google ID, email, ime, vaši odgovori, tačno vrijeme slanja.</td><td>Google tabela (listovi <code>FeedbackResponses</code>, <code>FeedbackAnswers</code>).</td></tr>
       <tr><td>Anonimni feedback</td><td>Samo vaši odgovori i <b>datum</b> slanja (vrijeme se ne čuva, samo dan). Ne upisujemo ime, email, Google ID ni IP adresu. Radi zaštite od zloupotrebe vaš preglednik šalje nasumičnu oznaku uređaja; server je ne upisuje u tabelu, nego iz nje pravi hash koji se u kešu pamti najviše 6 sati radi ograničenja broja slanja.</td><td>Google tabela (isti listovi, bez identiteta). Oznaka uređaja: <code>localStorage</code> vašeg preglednika.</td></tr>
       <tr><td>Administratori</td><td>Email, status (aktivan/neaktivan), ko je i kada dodao administratora, i Google ID (veže se pri prvoj prijavi administratora). Email administratora vidi se u administraciji.</td><td>Google tabela (list <code>Admins</code>).</td></tr>
+      <tr><td>Dnevnik revizije</td><td>Vrijeme, email administratora koji je izvršio radnju, vrsta radnje (npr. dodavanje administratora, anonimizacija, obrada zahtjeva za brisanje) i brojevi zapisa. Za zahtjeve za brisanje samo skraćeni hash osobe i oznaka zahtjeva, nikad njen email.</td><td>Google tabela (list <code>AuditLog</code>).</td></tr>
       <tr><td>Sadržaj događaja</td><td>Nazivi, agende, ankete, pitanja koje unose administratori. To nisu lični podaci posjetilaca, ali mogu sadržavati imena govornika.</td><td>Google tabela.</td></tr>
     </tbody></table></div>
   <p>Ne koristimo analitiku, reklame ni praćenje, ne profilišemo korisnike i ne prodajemo podatke.</p>
@@ -53,7 +54,7 @@
   <ul>
     <li><b>Javno</b> se prikazuju samo objavljeni događaji, agende i zbirni rezultati ankete (ako je tako podešeno). Javni odgovori nikad ne sadrže imena ni emailove glasača.</li>
     <li><b>Administratori</b> aplikacije vide ko je glasao i za šta, te identificirane odgovore (ime i email). Anonimne odgovore vide bez identiteta.</li>
-    <li><b>Osobe koje imaju pristup Google tabeli</b> (vlasnik tabele i svi kojima je tabela podijeljena) mogu vidjeti sve listove, uključujući emailove glasača i listu administratora. Tabela se ne dijeli javno.</li>
+    <li><b>Google tabela</b> u kojoj su podaci je <b>privatna</b>: nije javno dijeljena i u vlasništvu je organizacijskog Google računa <code>hana.mahmutovic@eestec-sa.ba</code>. Pristup imaju samo osobe kojima ju je vlasnik izričito dodijelio; administratori aplikacije ne trebaju pristup tabeli jer podacima pristupaju preko aplikacije.</li>
     <li>Obrađivači koje koristimo: Google (prijava, Apps Script, Sheets) i GitHub (hosting stranice). Podatke ne dajemo drugim trećim stranama.</li>
   </ul>
 
@@ -65,14 +66,16 @@
   </ul>
 
   <h2>6. Koliko dugo čuvamo podatke</h2>
-  <p>Organizacija <b>još nije odredila rokove čuvanja</b>. Trenutno ponašanje aplikacije je sljedeće:</p>
+  <p><b>Lični podaci se čuvaju najviše dvije godine (24 mjeseca).</b> Rok se računa od posljednje izmjene zapisa: za glas od posljednje promjene glasa, za identificirani odgovor od slanja. Nakon isteka roka identitet (ime, email i Google ID) se uklanja anonimizacijom: zbirni rezultati i odgovori ostaju, ali više nisu povezani s osobom.</p>
   <ul>
-    <li>Glasovi, odgovori na feedback, događaji i lista administratora ostaju u tabeli <b>dok ih administrator ručno ne obriše</b>. Aplikacija ne briše podatke automatski.</li>
+    <li>Anonimizaciju ne radi aplikacija sama. Pokreće je ručno ovlašteni administrator iz administracije, uz izričitu potvrdu, a svaka radnja se bilježi u dnevnik revizije (ko, kada, koliko zapisa; bez ličnih podataka osoba na koje se odnosi). Aplikacija ne briše podatke automatski.</li>
+    <li>Slobodan tekst u odgovorima se anonimizacijom ne mijenja; na vaš zahtjev se može potpuno obrisati (odjeljak 8).</li>
+    <li>Anonimni odgovori, događaji i agende ne sadrže lične podatke posjetilaca i ostaju u tabeli dok ih administrator ne obriše.</li>
     <li>Provjera tokena (keš): najviše 5 minuta. Brojač za ograničenje anonimnog slanja: najviše 6 sati.</li>
     <li>Token prijave u pregledniku: do zatvaranja kartice (otprilike do sat vremena važenja tokena). Oznaka uređaja u <code>localStorage</code>: dok je vi ne obrišete u pregledniku.</li>
     <li>Google i GitHub vode vlastite tehničke zapise po svojim pravilima, na koje ne utičemo.</li>
   </ul>
-  <p>Rokovi: <mark class="confirm">[POTVRDITI: koliko dugo se čuvaju (a) glasovi i imena/emailovi uz njih, (b) identificirani odgovori, (c) anonimni odgovori, (d) događaji i agende, (e) neaktivni administratori; ko i kada briše podatke nakon isteka roka]</mark></p>
+  <p>Još nije odlučeno: <mark class="confirm">[POTVRDITI: koliko često se anonimizacija pokreće (npr. jednom godišnje) i ko je odgovoran; koliko dugo se čuvaju administratorski zapisi nakon deaktivacije i dnevnik revizije]</mark></p>
 
   <h2>7. Treće strane i prenos podataka</h2>
   <ul>
@@ -82,14 +85,14 @@
   <p>Koristimo Google prijavu samo za osnovne podatke (<code>openid</code>, <code>email</code>, <code>profile</code>) i te podatke koristimo isključivo za svrhe iz odjeljka 3.</p>
 
   <h2>8. Vaša prava i zahtjevi za brisanje</h2>
-  <p>Možete tražiti pristup svojim podacima, ispravku i brisanje. Pošaljite zahtjev sa Google računa kojim ste glasali ili slali identificirani feedback na <a href="mailto:hr@eestec-sa.ba">hr@eestec-sa.ba</a>.</p>
+  <p>Možete tražiti pristup svojim podacima, ispravku i brisanje. Pošaljite zahtjev sa Google računa kojim ste glasali ili slali identificirani feedback na <a href="mailto:hana.mahmutovic@eestec-sa.ba">hana.mahmutovic@eestec-sa.ba</a>. Odobrene zahtjeve za brisanje može obraditi bilo koji trenutno ovlašteni administrator aplikacije.</p>
   <ul>
-    <li>Ručno brišemo vaše redove iz listova <code>Votes</code> i <code>FeedbackResponses</code>/<code>FeedbackAnswers</code>. Trenutno u aplikaciji ne postoji dugme za samostalno brisanje.</li>
+    <li>Zahtjev se obrađuje u aplikaciji na jedan od dva načina: <b>anonimizacija</b> (uklanja se vaš identitet, odgovori i zbirni rezultati ostaju) ili <b>potpuno brisanje</b> vaših glasova i identificiranih odgovora. Radnja se bilježi u dnevnik revizije bez vašeg emaila (samo skraćeni hash i broj zapisa). Samoposlužno brisanje ne postoji.</li>
     <li><b>Anonimne odgovore ne možemo povezati s vama</b> pa ih ne možemo ni pronaći ni obrisati na vaš zahtjev.</li>
     <li>Brisanjem glasa nestaje i vaša mogućnost da vidite „moj glas“; možete ponovo glasati ako je anketa otvorena.</li>
     <li>Prijavu u svakom trenutku prekidate odjavom ili povlačenjem pristupa aplikaciji u <a href="https://myaccount.google.com/connections">postavkama Google računa</a>.</li>
   </ul>
-  <p>Rok za odgovor: <mark class="confirm">[POTVRDITI: rok za obradu zahtjeva i ko ih obrađuje]</mark> Pravo na žalbu nadležnom tijelu: <mark class="confirm">[POTVRDITI: nadležno tijelo za zaštitu podataka]</mark></p>
+  <p>Rok za odgovor: <mark class="confirm">[POTVRDITI: rok za obradu zahtjeva]</mark> Pravo na žalbu nadležnom tijelu: <mark class="confirm">[POTVRDITI: nadležno tijelo za zaštitu podataka]</mark></p>
 
   <h2>9. Kolačići i lokalna pohrana</h2>
   <p>Aplikacija ne postavlja vlastite kolačiće. Koristi <code>sessionStorage</code> (token prijave, do zatvaranja kartice) i <code>localStorage</code> (nasumična oznaka uređaja za anonimni feedback). Google može postaviti vlastite kolačiće pri prijavi.</p>
@@ -105,8 +108,8 @@
 <section id="en" lang="en">
   <h1 style="font-size:32px;margin-top:40px">Privacy Policy (English)</h1>
   <h2>1. Who we are</h2>
-  <p>“EESTEC Events” (agendas, lunch polls and feedback for events) is operated by <b>EESTEC LC Sarajevo</b> (“we”). <mark class="confirm">[CONFIRM: exact legal name and address of the controller, and whether the controller is EESTEC LC Sarajevo or another EESTEC unit]</mark></p>
-  <p>Privacy contact: <a href="mailto:hr@eestec-sa.ba">hr@eestec-sa.ba</a> <mark class="confirm">[CONFIRM: correct address for privacy requests]</mark></p>
+  <p>“EESTEC Events” (agendas, lunch polls and feedback for events) is operated by <b>EESTEC LC Sarajevo</b> (“we”). <b>Legal controller</b> (the legal entity responsible for the processing): <mark class="confirm">[CONFIRM: exact legal name, registered address, and whether the controller is EESTEC LC Sarajevo or another EESTEC unit]</mark></p>
+  <p><b>Operational privacy contact</b> (the person handling day-to-day requests; this is not the same as the legal controller): <a href="mailto:hana.mahmutovic@eestec-sa.ba">hana.mahmutovic@eestec-sa.ba</a></p>
 
   <h2>2. Data we process</h2>
   <div class="tw" tabindex="0" role="region" aria-label="Table: data we process"><table>
@@ -118,6 +121,7 @@
       <tr><td>Identified feedback</td><td>Google ID, email, name, your answers, exact submission time.</td><td>Google Sheet (<code>FeedbackResponses</code>, <code>FeedbackAnswers</code> tabs).</td></tr>
       <tr><td>Anonymous feedback</td><td>Only your answers and the <b>date</b> of submission (time is not stored, only the day). We do not store name, email, Google ID or IP address. For abuse prevention your browser sends a random device identifier; the server does not write it to the sheet but derives a hash that is kept in a cache for at most 6 hours to limit repeat submissions.</td><td>Google Sheet (same tabs, without identity). Device identifier: your browser’s <code>localStorage</code>.</td></tr>
       <tr><td>Administrators</td><td>Email, status (active/inactive), who added the administrator and when, and the Google ID (bound at the administrator’s first sign-in).</td><td>Google Sheet (<code>Admins</code> tab).</td></tr>
+      <tr><td>Audit log</td><td>Time, email of the administrator who performed the action, type of action (e.g. adding an administrator, anonymisation, processing a deletion request) and record counts. For deletion requests only a shortened hash of the person and the request reference, never their email.</td><td>Google Sheet (<code>AuditLog</code> tab).</td></tr>
       <tr><td>Event content</td><td>Names, agendas, polls and questions entered by administrators; may include speaker names.</td><td>Google Sheet.</td></tr>
     </tbody></table></div>
   <p>We use no analytics, advertising or tracking, do not profile users and do not sell data.</p>
@@ -135,7 +139,7 @@
   <ul>
     <li><b>Publicly</b> we show only published events, agendas and aggregate poll results (if configured). Public responses never contain voters’ names or emails.</li>
     <li><b>Administrators</b> can see who voted for what and identified answers (name and email). Anonymous answers are shown without identity.</li>
-    <li><b>People with access to the Google Sheet</b> (the owner and anyone it is shared with) can see all tabs, including voters’ emails and the administrator list. The sheet is not shared publicly.</li>
+    <li>The <b>Google Sheet</b> holding the data is <b>private</b>: it is not shared publicly and is owned by the organisational Google account <code>hana.mahmutovic@eestec-sa.ba</code>. Only people the owner has explicitly granted access can open it; application administrators do not need access to the sheet because they work with the data through the application.</li>
     <li>Processors: Google (sign-in, Apps Script, Sheets) and GitHub (page hosting). We do not share data with other third parties.</li>
   </ul>
 
@@ -147,14 +151,16 @@
   </ul>
 
   <h2>6. Retention</h2>
-  <p>The organisation <b>has not yet defined retention periods</b>. Current behaviour:</p>
+  <p><b>Personal data is kept for at most two years (24 months).</b> The period is counted from the last change of the record: for a vote, from the last change of the vote; for an identified response, from submission. After that the identity (name, email and Google ID) is removed by anonymisation: aggregate results and answers remain but are no longer linked to a person.</p>
   <ul>
-    <li>Votes, feedback responses, events and the administrator list remain in the sheet <b>until an administrator deletes them manually</b>. The application does not delete data automatically.</li>
+    <li>The application does not anonymise by itself. An authorised administrator starts it manually from the administration area with explicit confirmation, and every action is recorded in an audit log (who, when, how many records; no personal data of the people concerned). The application does not delete data automatically.</li>
+    <li>Free-text answers are not changed by anonymisation; on your request they can be deleted completely (section 8).</li>
+    <li>Anonymous responses, events and agendas contain no visitors’ personal data and remain in the sheet until an administrator deletes them.</li>
     <li>Token verification cache: at most 5 minutes. Anonymous submission counter: at most 6 hours.</li>
     <li>Sign-in token in the browser: until the tab is closed (the token itself is valid for about an hour). Device identifier in <code>localStorage</code>: until you clear it in your browser.</li>
     <li>Google and GitHub keep their own technical logs under their own policies, which we do not control.</li>
   </ul>
-  <p>Periods: <mark class="confirm">[CONFIRM: how long (a) votes with names/emails, (b) identified responses, (c) anonymous responses, (d) events and agendas, (e) inactive administrators are kept; who deletes data after expiry and when]</mark></p>
+  <p>Not yet decided: <mark class="confirm">[CONFIRM: how often anonymisation is run (e.g. once a year) and who is responsible; how long administrator records are kept after deactivation, and how long the audit log is kept]</mark></p>
 
   <h2>7. Third parties and transfers</h2>
   <ul>
@@ -164,13 +170,13 @@
   <p>We use Google sign-in only for basic profile data (<code>openid</code>, <code>email</code>, <code>profile</code>) and use that data solely for the purposes in section 3.</p>
 
   <h2>8. Your rights and deletion requests</h2>
-  <p>You may request access, correction and deletion. Send a request from the Google account you used to vote or submit identified feedback to <a href="mailto:hr@eestec-sa.ba">hr@eestec-sa.ba</a>.</p>
+  <p>You may request access, correction and deletion. Send a request from the Google account you used to vote or submit identified feedback to <a href="mailto:hana.mahmutovic@eestec-sa.ba">hana.mahmutovic@eestec-sa.ba</a>. Approved deletion requests can be processed by any currently authorised administrator of the application.</p>
   <ul>
-    <li>We manually delete your rows from the <code>Votes</code> and <code>FeedbackResponses</code>/<code>FeedbackAnswers</code> tabs. The application currently has no self-service delete button.</li>
+    <li>A request is processed in the application in one of two ways: <b>anonymisation</b> (your identity is removed; answers and aggregate results remain) or <b>complete deletion</b> of your votes and identified responses. The action is written to an audit log without your email (only a shortened hash and the number of records). There is no self-service deletion.</li>
     <li><b>We cannot link anonymous responses to you</b>, so we cannot find or delete them on request.</li>
     <li>You can stop using sign-in at any time by signing out or revoking access in your <a href="https://myaccount.google.com/connections">Google Account settings</a>.</li>
   </ul>
-  <p>Response time: <mark class="confirm">[CONFIRM: response deadline and who handles requests]</mark> Right to complain to the authority: <mark class="confirm">[CONFIRM: competent data protection authority]</mark></p>
+  <p>Response time: <mark class="confirm">[CONFIRM: response deadline]</mark> Right to complain to the authority: <mark class="confirm">[CONFIRM: competent data protection authority]</mark></p>
 
   <h2>9. Cookies and local storage</h2>
   <p>The application sets no cookies of its own. It uses <code>sessionStorage</code> (sign-in token, until the tab is closed) and <code>localStorage</code> (random device identifier for anonymous feedback). Google may set its own cookies during sign-in.</p>

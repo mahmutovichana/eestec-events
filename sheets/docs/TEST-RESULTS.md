@@ -22,12 +22,13 @@ Prijava u UI testovima je **simulirana** (osam administratorskih računa je tako
 |---|---|
 | `tsc --noEmit` (frontend) | **PASS**, 0 grešaka |
 | `vite build` | **PASS** (JS 272 kB, 83 kB gzip; CSS 15 kB) |
-| `npm run sheets:test` | **PASS**: 95 testova, 95 prošlo, 0 palo, 0 preskočeno |
+| `npm run sheets:test` | **PASS**: 113 testova, 113 prošlo, 0 palo, 0 preskočeno |
 | Backend (`backend.test.mjs`) | **PASS** 36/36 |
 | Autorizacija i administratori (`admins.test.mjs`) | **PASS** 25/25 |
 | Mapiranje migracije (`migration.test.mjs`) | **PASS** 5/5 |
-| Pravne stranice, statički (`legal.test.mjs`) | **PASS** 6/6 |
-| Browser (`e2e.test.mjs`, Chrome) | **PASS** 23/23 (uključuje test artefakta pod putanjom /eestec-events/) |
+| Čuvanje podataka, brisanje, revizija (`retention.test.mjs`) | **PASS** 13/13 |
+| Pravne stranice, statički (`legal.test.mjs`) | **PASS** 8/8 |
+| Browser (`e2e.test.mjs`, Chrome) | **PASS** 26/26 (uključuje artefakt pod /eestec-events/, stvarni config.js, stranicu Čuvanje podataka) |
 | axe-core WCAG 2.0/2.1/2.2 A/AA + best-practice, 10 stranica × 2 širine (javne + admin) | **PASS**, 0 povreda (jedna povreda `target-size` je uhvaćena i ispravljena tokom rada) |
 | Bez horizontalnog scrolla, 8 stranica × 6 širina (320/375/390/768/1024/1440) | **PASS** |
 | `eslint` za `sheets/web` | **NOT RUN** (nije konfigurisan za ovaj podprojekt) |
@@ -48,11 +49,15 @@ Svih 8 administratora (sa i bez `hd` claima) izvršava sve admin akcije; 13 vrst
 
 Jedan UI test (cijeli admin tok) je bio nestabilan (1 od 3 pokretanja) zbog utrke u samom testu (čekao je element koji postoji i na prethodnom tabu). Ispravljen čekanjem tačnog sadržaja; potom 6/6 uzastopnih prolaza.
 
+## Stvarna integracija (`node sheets/scripts/real-smoke.mjs`): 12/12 PASS
+
+Stvarni Chrome + stvarni Apps Script deployment (samo čitanje, bez prijave). Dokazuje: POST kao `text/plain`, bez preflighta, redirect na `script.googleusercontent.com`, `Access-Control-Allow-Origin: *`, odgovor servera prikazan u stranici, admin akcije bez prijave odbijene, deploy je verzija sa više administratora, lažni token stiže do Googlea i biva odbijen bez `INTERNAL` greške, tabela anonimno vraća 401. **Ne dokazuje** Google prijavu ni admin funkcije (traže ručni klik pravog korisnika; `INTEGRATION-CHECKLIST.md`), niti origin `github.io` (stranica još nije objavljena).
+
 ## Šta nije izvršeno
 
 | Stavka | Status | Razlog |
 |---|---|---|
-| Pravi Google login (običan korisnik i `hr@eestec-sa.ba`) | **BLOCKED** | traži Google Cloud projekt i stvarne račune (SETUP.md, korak 6) |
+| Pravi Google login (8 administratora i običan korisnik) | **BLOCKED** | traži klik pravih korisnika; Google projekt i klijent postoje (INTEGRATION-CHECKLIST.md, C) |
 | Pokušaj admin pristupa pravim drugim Google računom | **BLOCKED** | isto |
 | Stvarno čitanje/pisanje u Google Sheets, CORS, redirect `/exec` | **BLOCKED** | traži vašu tabelu i deployment |
 | Paralelni zahtjevi na pravom Apps Scriptu | **NOT RUN** | traži deployment; logika brave testirana lažno |

@@ -388,6 +388,7 @@ test("GitHub Pages podputanja: stvarni artefakt (prazan config.js) radi pod /ees
   const server = http.createServer((req, res) => {
     const u = new URL(req.url, "http://x");
     if (!u.pathname.startsWith(PREFIX + "/")) { res.writeHead(404); return res.end("nope"); } // kao github.io: sve van podputanje je 404
+    if (u.pathname === PREFIX + "/config.js") { res.writeHead(200, { "Content-Type": "text/javascript" }); return res.end('window.EESTEC_CONFIG = { apiUrl: "", clientId: "" };'); } // test ne smije zvati stvarni server
     let f = path.join(dist, u.pathname.slice(PREFIX.length));
     if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, "index.html");
     if (!f.startsWith(dist) || !fs.existsSync(f)) { res.writeHead(404); return res.end("nf"); }
@@ -417,4 +418,67 @@ test("GitHub Pages podputanja: stvarni artefakt (prazan config.js) radi pod /ees
     assert.deepEqual(failed, []);
     await p.close();
   } finally { await new Promise((r) => server.close(r)); }
+});
+
+test("config.js u artefaktu ima stvarni Apps Script URL i OAuth Client ID (javne vrijednosti, bez tajni)", T, async () => {
+  const cfg = fs.readFileSync(new URL("../web/dist/config.js", import.meta.url), "utf8");
+  assert.match(cfg, /apiUrl:\s*"https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec"/);
+  assert.match(cfg, /clientId:\s*"\d+-[a-z0-9]+\.apps\.googleusercontent\.com"/);
+  assert.ok(!/secret|GOCSPX|private/i.test(cfg), "nema client secreta");
+});
+
+test("čuvanje podataka: pregled, anonimizacija uz frazu, obrada zahtjeva, dnevnik (UI)", T, async () => {
+  const old = makeToken({ sub: "old-1", email: "stari.korisnik@gmail.com", name: "Stari Korisnik" });
+  srv.g.call({ action: "submitVote", idToken: old, pollId: srv.seeded.poll, optionId: srv.g.rows("PollOptions")[0][0] });
+  const sheet = srv.g.ss.getSheetByName("Votes");
+  const idx = sheet.data.findIndex((r) => r[3] === "old-1");
+  const d = new Date(); d.setUTCMonth(d.getUTCMonth() - 30);
+  sheet.data[idx][6] = sheet.data[idx][7] = d.toISOString();
+  const guest = await open("/admin/_podaci", { token: ANA_TOKEN });
+  assert.match(await text(guest), /Nemate pristup/);
+  await guest.close();
+  const p = await open("/admin/_podaci", { token: ADMIN_TOKEN });
+  await clickText(p, "button", "Provjeri zapise starije od roka");
+  await p.waitForFunction(() => /starije od 24 mjeseci/.test(document.body.innerText), { timeout: 5000 });
+  await clickText(p, "button", "Anonimiziraj 1 zapisa");
+  await p.waitForSelector('div[role="dialog"]');
+  const okBtn = 'div[role="dialog"] button.danger';
+  assert.equal(await p.$eval(okBtn, (b) => b.disabled), true);
+  await p.type('div[role="dialog"] input', "ANONIMIZIRAJ");
+  await p.click(okBtn);
+  await p.waitForFunction(() => /Anonimizacija po roku čuvanja/.test(document.body.innerText), { timeout: 5000 });
+  assert.ok(srv.g.rows("Votes").some((r) => r[3].startsWith("anonymized:")));
+  assert.ok(!JSON.stringify(srv.g.rows("Votes")).includes("stari.korisnik@gmail.com"));
+  // zahtjev za brisanje
+  srv.g.call({ action: "submitVote", idToken: BEN_TOKEN, pollId: srv.seeded.poll, optionId: srv.g.rows("PollOptions")[1][0] });
+  await p.type("input[type=email]", "ben@gmail.com");
+  await clickText(p, "button", "Pogledaj");
+  await p.waitForFunction(() => /Pronađeno:/.test(document.body.innerText), { timeout: 5000 });
+  const refInput = await p.$$("input[maxlength='100']");
+  await refInput[0].type("ZAHTJEV-1");
+  await clickText(p, "button", "Obradi zahtjev");
+  await p.waitForSelector('div[role="dialog"]');
+  await p.type('div[role="dialog"] input', "OBRIŠI");
+  await p.click(okBtn);
+  await p.waitForFunction(() => /zahtjev: ZAHTJEV-1/.test(document.body.innerText), { timeout: 5000 });
+  assert.ok(!JSON.stringify(srv.g.rows("Votes")).includes("ben@gmail.com"));
+  assert.ok(!JSON.stringify(srv.g.rows("AuditLog")).includes("ben@gmail.com"));
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test("čuvanje podataka: pristupačnost (axe) i bez horizontalnog scrolla", T, async () => {
+  const bad = [];
+  for (const w of [1280, 390, 320]) {
+    const p = await open("/admin/_podaci", { token: ADMIN_TOKEN, width: w });
+    await p.waitForFunction(() => /Dnevnik revizije/.test(document.body.innerText));
+    if (w !== 320) {
+      await p.evaluate(axeSource);
+      const r = await p.evaluate(() => axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa", "best-practice"] } }));
+      for (const v of r.violations) bad.push(`@${w}: ${v.id} ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
+    }
+    assert.ok((await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0, `scroll @${w}`);
+    await p.close();
+  }
+  assert.deepEqual(bad, []);
 });

@@ -33,6 +33,14 @@ Email se može ponovo dodijeliti (obrisan pa napravljen račun). Zato se pri prv
 - `importSeed` ne može upisivati `Admins` (ni `Settings`).
 - **Ograničenje:** tabela nije skrivena od svojih urednika. Urednik tabele vidi `Admins`, `Votes` (emailove) i može ih mijenjati. Zato tabelu dijelite samo s povjerenim osobama; ostali administratori ne trebaju pristup tabeli.
 
+## Čuvanje podataka, brisanje i revizija
+Detalji u `RETENTION.md`. Sigurnosna svojstva:
+- `previewRetention`, `applyRetention`, `previewUserData`, `eraseUserData`, `listAudit` su **admin-only** (provjera prije čitanja podataka; testirano za gosta, običnog korisnika, opozvanog administratora i neverifikovan email).
+- Rok (24 mjeseca) računa server; klijent ga ne može skratiti. Nema okidača: ništa se ne briše samo.
+- Destruktivne radnje traže frazu (`ANONIMIZIRAJ` / `OBRIŠI`) i **tačan broj zapisa iz pregleda** (zaštita od zastarjelog pregleda), izvršavaju se pod bravom i bilježe u `AuditLog`.
+- `AuditLog` ne sadrži email osobe čiji se podaci brišu (samo skraćeni salted hash i oznaka zahtjeva); `importSeed` ga ne može pisati.
+- Ograničenje: urednik Google tabele može ručno mijenjati `AuditLog`, `Admins` i podatke; dnevnik nije kriptografski nepromjenjiv.
+
 ## Domen i `hd`
 - Podrazumijevano **nema ograničenja po domeni**: listani administrator nikad nije odbijen zbog domene ili `hd` claima. Ranije `ADMIN_HD` (koji je tražio `hd` claim) je uklonjen jer bi odbijao račune bez `hd` claima.
 - `ADMIN_EMAIL_DOMAINS` (opcionalno) ograničava ko se može dodati i ko se može prijaviti kao administrator.
