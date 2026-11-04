@@ -10,11 +10,11 @@ export async function UserMenu() {
   if (!user) return <SignInButton />;
   return (
     <details className="um">
-      <summary aria-label={`Račun: ${user.name}`}>
+      <summary>
         {user.picture ? (
           <img src={user.picture} alt="" width={36} height={36} referrerPolicy="no-referrer" />
         ) : (
-          <span className="av">{initials(user.name)}</span>
+          <span className="av" aria-hidden="true">{initials(user.name)}</span>
         )}
         <span className="nm">{user.name}</span>
       </summary>
