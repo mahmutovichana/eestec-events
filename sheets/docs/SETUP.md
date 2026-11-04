@@ -115,6 +115,8 @@ Napomena: „Execute as: Me“ znači da skripta piše u tabelu kao vlasnik. Zat
 
 ### 5a. Pustiti stranicu na mrežu (prije Branding provjere)
 
+**Rezultat prvog pokretanja (run #1 na grani feat/sheets-simplification):** posao *build* je **uspio** na GitHubu (`npm ci`, build, provjera artefakta, upload). Posao *deploy* je **odbijen** porukom: *Branch "feat/sheets-simplification" is not allowed to deploy to github-pages due to environment protection rules.* Okruženje `github-pages` već postoji, pa je preostao samo korak 2 ispod (traži administratorska prava nad repozitorijem; ne mogu ga uraditi umjesto vas). Nakon toga: Actions → run → **Re-run failed jobs**.
+
 1. GitHub → repozitorij → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 2. **Settings → Environments → github-pages → Deployment branches**: dodajte `feat/sheets-simplification` (po zadanom je dozvoljen samo `main`; bez ovoga deploy posao pada s porukom o „environment protection rules“). Ovaj korak nije potreban nakon spajanja u `main`.
 3. Radni tok `.github/workflows/sheets-pages.yml` se pokreće pri svakom push-u na `main` ili `feat/sheets-simplification` koji mijenja `sheets/web/**`. Nakon uključenja Pages-a: **Actions** → zadnji run → **Re-run all jobs** (ili novi push).
