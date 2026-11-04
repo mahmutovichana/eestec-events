@@ -13,6 +13,10 @@ export type SessionUser = { id: string; email: string; name: string; picture: st
 
 // Lokalni razvoj bez Google/Auth0 računa. Nikad u produkciji (NODE_ENV=production isključuje ovu granu).
 const DEV_AUTH = process.env.NODE_ENV !== "production" && process.env.DEV_AUTH === "true";
+if (process.env.NODE_ENV === "production" && process.env.DEV_AUTH === "true") {
+  // Namjerno glasno: DEV_AUTH u produkciji je konfiguracijska greška. Ostaje ISKLJUČEN, ali je treba ukloniti.
+  console.error("[security] DEV_AUTH=true je postavljen u produkciji i IGNORIŠE se. Ukloni varijablu iz okruženja.");
+}
 export const devAuthEnabled = () => DEV_AUTH;
 
 const DEV_PROFILES: Record<string, Claims & { name: string; picture: string | null }> = {
@@ -44,28 +48,29 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const picture = c.picture ?? null;
   const verified = c.email_verified === true;
 
-  try {
-    const existing = await db.user.findUnique({ where: { auth0Sub: c.sub } });
-    if (!existing) {
-      const u = await db.user.create({ data: { auth0Sub: c.sub, email, emailVerified: verified, name, picture, role } });
-      return { id: u.id, email: u.email, name: u.name, picture: u.picture, role: u.role };
+  // Greške baze se NE gutaju: pad baze ne smije izgledati kao odjava (admin bi završio u petlji prijave).
+  let existing = await db.user.findUnique({ where: { auth0Sub: c.sub } });
+  if (!existing) {
+    try {
+      existing = await db.user.create({ data: { auth0Sub: c.sub, email, emailVerified: verified, name, picture, role } });
+    } catch (e) {
+      // Istovremena prva prijava iz dva taba: drugi zahtjev samo čita red koji je prvi kreirao.
+      if ((e as { code?: string }).code !== "P2002") throw e;
+      existing = await db.user.findUniqueOrThrow({ where: { auth0Sub: c.sub } });
     }
-    const stale = Date.now() - existing.lastLoginAt.getTime() > 15 * 60_000;
-    const changed =
-      existing.email !== email || existing.emailVerified !== verified || existing.name !== name ||
-      existing.picture !== picture || existing.role !== role;
-    if (changed || stale) {
-      const u = await db.user.update({
-        where: { id: existing.id },
-        data: { email, emailVerified: verified, name, picture, role, lastLoginAt: stale ? new Date() : undefined },
-      });
-      return { id: u.id, email: u.email, name: u.name, picture: u.picture, role: u.role };
-    }
-    return { id: existing.id, email: existing.email, name: existing.name, picture: existing.picture, role: existing.role };
-  } catch {
-    // npr. isti email već pripada drugom identitetu: tretiraj kao neprijavljen.
-    return null;
   }
+  // Upis samo kad se nešto promijenilo ili je zadnja prijava starija od 15 minuta (bez upisa pri običnom čitanju sesije).
+  const stale = Date.now() - existing.lastLoginAt.getTime() > 15 * 60_000;
+  const changed =
+    existing.email !== email || existing.emailVerified !== verified || existing.name !== name ||
+    existing.picture !== picture || existing.role !== role;
+  if (changed || stale) {
+    existing = await db.user.update({
+      where: { id: existing.id },
+      data: { email, emailVerified: verified, name, picture, role, lastLoginAt: stale ? new Date() : undefined },
+    });
+  }
+  return { id: existing.id, email: existing.email, name: existing.name, picture: existing.picture, role: existing.role };
 });
 
 export const isAdminUser = (u: SessionUser | null): u is SessionUser => !!u && u.role === "ADMIN";
