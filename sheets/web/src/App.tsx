@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { AdminEvent, AdminGate, AdminHome, AdminImport } from "./admin";
+import { AdminEvent, AdminGate, AdminAdmins, AdminHome, AdminImport } from "./admin";
 import { AuthProvider, GoogleSignIn, useAuth } from "./auth";
 import { EventPage, Home } from "./public";
 import { ToastProvider, useToast } from "./ui";
@@ -54,7 +54,7 @@ function Routes() {
   useEffect(() => { document.title = "EESTEC LC Sarajevo — Events"; }, [path]);
   let page: React.ReactNode;
   if (parts[0] === "e" && parts[1]) page = <EventPage slug={parts[1]} tab={parts[2] ?? ""} nav={nav} />;
-  else if (parts[0] === "admin") page = <AdminGate>{parts[1] === "_uvoz" ? <AdminImport nav={nav} /> : parts[1] ? <AdminEvent slug={parts[1]} tab={parts[2] ?? ""} nav={nav} /> : <AdminHome nav={nav} />}</AdminGate>;
+  else if (parts[0] === "admin") page = <AdminGate>{parts[1] === "_admini" ? <AdminAdmins nav={nav} /> : parts[1] === "_uvoz" ? <AdminImport nav={nav} /> : parts[1] ? <AdminEvent slug={parts[1]} tab={parts[2] ?? ""} nav={nav} /> : <AdminHome nav={nav} />}</AdminGate>;
   else if (parts.length === 0) page = <Home nav={nav} />;
   else page = <div className="empty"><h2>Stranica ne postoji</h2><p><a href="#/">Nazad na događaje</a></p></div>;
   return <Shell nav={nav}>{page}</Shell>;

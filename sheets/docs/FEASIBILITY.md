@@ -28,7 +28,7 @@ HtmlService (stranica služena sa script.google.com) je loš izbor za Google pri
 |---|---|---|
 | Može li Apps Script reći ko je pozivalac? | S postavkama „Execute as: Me“ + „Anyone“, `Session.getActiveUser().getEmail()` je za vanjske račune u pravilu prazan. Ne oslanjamo se na to. | POZNATO |
 | Šta se koristi umjesto toga | Frontend dobija **Google ID token** (JWT) kroz Google Identity Services. Šalje ga u svakom zahtjevu. Server ga provjerava kod Googlea (`oauth2.googleapis.com/tokeninfo`) i provjerava `aud` (naš Client ID), `iss`, `exp`, `email_verified`. Email/uloga iz tijela zahtjeva se nikad ne koriste. | implementirano; logika PROVJERENA lažnim Googleom; stvarni Google PROVJERITI |
-| Admin | token mora imati `email_verified = true` i email jednak `ADMIN_EMAIL` (podrazumijevano `hr@eestec-sa.ba`; opcionalno i `hd` claim = `eestec-sa.ba`). Postavke su u Script properties, koje ne vide urednici tabele. | implementirano |
+| Admin | token mora imati `email_verified = true` i email na listi aktivnih administratora (list `Admins`, osam početnih računa; upravlja se iz aplikacije). Opcionalna ograničenja domene su u Script properties. | implementirano |
 | Stabilan identitet za glasove | Google `sub` (numerički ID), ne email. | implementirano |
 | `tokeninfo` endpoint | Googleova dokumentacija ga opisuje kao prikladan za debug i niskoprometne primjene. Za ovaj obim (desetine korisnika) i uz keširanje tokena 5 min, to je dovoljno. Za veliki promet bi trebalo lokalno provjeravati potpis JWT-a. | POZNATO |
 

@@ -55,16 +55,17 @@ class FakeSpreadsheet {
   insertSheet(n) { const s = new FakeSheet(n); this.sheets.set(n, s); return s; }
 }
 
-export function createGas({ adminEmail, props = {} } = {}) {
+export function createGas({ owner = 'hana.mahmutovic@eestec-sa.ba', props = {} } = {}) {
   const ss = new FakeSpreadsheet();
   const stats = { fetches: 0, lockWaits: 0, quotaWrites: 0 };
-  const scriptProps = { CLIENT_ID, ...(adminEmail ? { ADMIN_EMAIL: adminEmail } : {}), ...props };
+  const scriptProps = { CLIENT_ID, ...props };
   const cacheStore = new Map();
   let locked = false;
   const sandbox = {
     console,
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: () => ss },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => scriptProps[k] ?? null, setProperty: (k, v) => { scriptProps[k] = v; } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => scriptProps[k] ?? null, setProperty: (k, v) => { scriptProps[k] = v; }, deleteProperty: (k) => { delete scriptProps[k]; } }) },
+    Session: { getEffectiveUser: () => ({ getEmail: () => owner }) },
     CacheService: { getScriptCache: () => ({
       get: (k) => { const e = cacheStore.get(k); if (!e) return null; if (e.exp < Date.now()) { cacheStore.delete(k); return null; } return e.v; },
       put: (k, v, ttl) => { cacheStore.set(k, { v, exp: Date.now() + (ttl ?? 600) * 1000 }); },
@@ -93,6 +94,8 @@ export function createGas({ adminEmail, props = {} } = {}) {
   return {
     ss, stats, scriptProps, cacheStore, sandbox,
     setup: () => vm.runInContext('setup()', sandbox),
+    /** Poziva funkciju iz Code.gs kao iz editora (npr. recoverAccess), mimo web aplikacije. */
+    editorRun: (fn) => vm.runInContext(fn + '()', sandbox),
     /** Isto što radi Apps Script: JSON string -> doPost -> JSON string. */
     call(payload) {
       const out = vm.runInContext('doPost', sandbox)({ postData: { contents: typeof payload === 'string' ? payload : JSON.stringify(payload) } });

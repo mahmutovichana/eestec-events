@@ -99,13 +99,6 @@ test('klijent ne može nametnuti identitet ni ulogu: email/role/isAdmin/userSub 
   assert.ok(v.includes('2001') && v.includes('ana@gmail.com') && !v.includes('1001'));
 });
 
-test('ADMIN_HD: ako je postavljen, token mora imati isti hd claim', () => {
-  const g = fresh({ props: { ADMIN_HD: 'eestec-sa.ba' } });
-  const noHd = makeToken({ sub: '1001', email: 'hr@eestec-sa.ba' });
-  err(g.call({ action: 'listAllEvents', idToken: noHd }), 'FORBIDDEN');
-  ok(g.call({ action: 'listAllEvents', idToken: ADMIN }));
-});
-
 test('provjera tokena se kešira: jedan poziv Googleu po tokenu', () => {
   const g = fresh();
   for (let i = 0; i < 5; i++) ok(g.call({ action: 'whoami', idToken: ANA }));

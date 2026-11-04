@@ -39,7 +39,7 @@ export function AdminHome({ nav }: { nav: Nav }) {
         <div className="span2"><button className="btn primary" disabled={busy}>Kreiraj događaj</button></div>
       </form>
       <h2 className="section">Svi događaji</h2>
-      <p><a className="tab" href="#/admin/_uvoz" onClick={(e) => { e.preventDefault(); nav("/admin/_uvoz"); }}>Uvoz podataka iz stare aplikacije</a></p>
+      <p className="actions"><a className="tab" href="#/admin/_admini" onClick={(e) => { e.preventDefault(); nav("/admin/_admini"); }}>Administratori</a> <a className="tab" href="#/admin/_uvoz" onClick={(e) => { e.preventDefault(); nav("/admin/_uvoz"); }}>Uvoz podataka iz stare aplikacije</a></p>
       {!data!.events.length && <div className="empty"><h2>Još nema događaja</h2><p>Kreirajte prvi iznad.</p></div>}
       <ul className="cards">
         {data!.events.map((e) => (
@@ -54,6 +54,50 @@ export function AdminHome({ nav }: { nav: Nav }) {
           </li>
         ))}
       </ul>
+    </>
+  );
+}
+
+// ───────── administratori ─────────
+type AdminRow = { email: string; active: boolean; addedAt: string; addedBy: string; signedInBefore: boolean };
+export function AdminAdmins({ nav }: { nav: Nav }) {
+  const { me } = useAuth();
+  const { data, error, loading, reload } = useLoad(() => call<{ admins: AdminRow[]; activeCount: number }>("listAdmins"), []);
+  const { busy, run } = useAction();
+  const [email, setEmail] = useState("");
+  const [confirm, setConfirm] = useState<AdminRow | null>(null);
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (await run(() => call("addAdmin", { email }), "Administrator je dodan")) { setEmail(""); reload(); }
+  };
+  const setActive = async (a: AdminRow, active: boolean) => {
+    if (await run(() => call("setAdminActive", { email: a.email, active }), active ? "Administrator je aktiviran" : "Administrator je deaktiviran")) reload();
+  };
+  if (loading) return <Spinner />;
+  if (error) return <ErrorBox error={error} retry={reload} />;
+  return (
+    <>
+      <div className="crumbs"><a href="#/admin" onClick={(e) => { e.preventDefault(); nav("/admin"); }}>← Svi događaji</a></div>
+      <div className="intro"><h1>Administratori</h1><p>Svaki administrator ima pun pristup. Pristup tabeli nije potreban.</p></div>
+      <form className="panel inline" onSubmit={add}>
+        <label className="field grow">Email novog administratora<input required type="email" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ime@eestec-sa.ba" /></label>
+        <button className="btn primary" disabled={busy}>Dodaj</button>
+      </form>
+      <section className="panel" aria-label="Lista administratora">
+        <h2>Aktivni: {data!.activeCount}</h2>
+        <ul className="opts-admin">
+          {data!.admins.map((a) => (
+            <li key={a.email} className={a.active ? "" : "archived"}>
+              <div><b>{a.email}</b>{a.email === me.email && " (vi)"}<small> · {a.active ? "aktivan" : "deaktiviran"} · {a.signedInBefore ? "već se prijavljivao" : "još se nije prijavljivao"} · dodao: {a.addedBy || "—"}</small></div>
+              {a.active
+                ? <button className="btn ghost danger" disabled={busy} onClick={() => setConfirm(a)}>Deaktiviraj</button>
+                : <button className="btn ghost" disabled={busy} onClick={() => setActive(a, true)}>Aktiviraj</button>}
+            </li>
+          ))}
+        </ul>
+      </section>
+      {confirm && <Confirm title="Deaktivirati administratora?" text={`${confirm.email} gubi administratorski pristup odmah.${confirm.email === me.email ? " Ovo je vaš račun: nećete više moći ući u administraciju." : ""}`} confirmLabel="Deaktiviraj" onCancel={() => setConfirm(null)}
+        onConfirm={async () => { const a = confirm; setConfirm(null); await setActive(a, false); }} />}
     </>
   );
 }

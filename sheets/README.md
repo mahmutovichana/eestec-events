@@ -8,6 +8,7 @@ Zamjena za složenu arhitekturu (Next.js, PostgreSQL, Prisma, Auth0, Vercel). Is
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | **počnite ovdje**: postavljanje korak po korak, Google Cloud i Apps Script postavke, šta radite ručno |
 | [docs/FEASIBILITY.md](docs/FEASIBILITY.md) | šta Artifact može/ne može, Apps Script identitet, CORS, kvote |
+| [docs/SECURITY.md](docs/SECURITY.md) | administratori (list `Admins`), autorizacija, oporavak pristupa |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | listovi, API, sigurnosni model, poređenje sa starom aplikacijom |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | prenos HOBOM-a iz stare baze |
 | [docs/TEST-RESULTS.md](docs/TEST-RESULTS.md) | šta je testirano, šta nije (i zašto) |
@@ -17,7 +18,7 @@ Zamjena za složenu arhitekturu (Next.js, PostgreSQL, Prisma, Auth0, Vercel). Is
 ```
 npm run sheets:build     # izgradi frontend (sheets/web/dist)
 npm run sheets:dev       # lokalni server s lažnim Googleom na http://127.0.0.1:8787
-npm run sheets:test      # 59 testova (backend, migracija, Chrome UI)
+npm run sheets:test      # 86 testova (backend, administratori, migracija, Chrome UI)
 ```
 
 U dev serveru prijava se simulira u konzoli preglednika: `localStorage.eestecTestToken = "<ispisani token>"`. Ovo radi samo uz lažni server; pravi backend takav token odbija.

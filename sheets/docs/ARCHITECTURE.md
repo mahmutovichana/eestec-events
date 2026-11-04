@@ -18,7 +18,7 @@ Bez: PostgreSQL, Prisma, Auth0, Vercela, Next.js servera, migracija baze.
 
 | Putanja | Namjena |
 |---|---|
-| `sheets/apps-script/Code.gs` | cijeli backend (jedna datoteka, ~1000 redova) |
+| `sheets/apps-script/Code.gs` | cijeli backend (jedna datoteka, ~1200 redova) |
 | `sheets/apps-script/appsscript.json` | manifest (V8, web app, minimalni scope-ovi) |
 | `sheets/web/` | React + Vite frontend (`public/config.js` = jedino podešavanje) |
 | `sheets/scripts/dev-server.mjs` | lokalni server: izgrađeni frontend + lažni Apps Script nad tabelom u memoriji |
@@ -45,6 +45,9 @@ Svaki red ima stabilan `id` (UUID); veze su preko ID-ova, nikad preko broja reda
 | FeedbackResponses | id, formId, submissionId, userSub, userEmail, userName, createdAt |
 | FeedbackAnswers | id, responseId, formId, questionId, questionLabel, questionType, questionOptions, value |
 | Settings | key, value (javno čitljivo samo: siteTitle, organization, contactEmail) |
+| Admins | email, active, addedAt, addedBy, sub (privatno; samo admin akcije; vidi SECURITY.md) |
+
+Administratori su namjerno odvojeni od vlasništva nad tabelom: skripta radi kao vlasnik (`Execute as: Me`), a ko je administrator određuje samo list `Admins`. Ostali administratori ne trebaju pristup Drive-u.
 
 List `Users` nije potreban: identitet dolazi iz tokena, a ime/email se upisuju uz glas ili identificirani odgovor.
 
@@ -61,14 +64,14 @@ Slojevi pravila (u kodu, jer Sheets nema ograničenja):
 
 Javno (bez prijave): `listPublishedEvents`, `getEvent` (nacrt je 404; rezultati po pravilima vidljivosti), `submitFeedback` (anonimne forme).
 Prijavljen korisnik: `whoami`, `submitVote`, `submitFeedback` (identificirane forme).
-Samo admin: `listAllEvents`, `createEvent`, `updateEvent`, `deleteOrArchiveEvent`, `manageAgenda`, `manageAgendaItems`, `managePoll`, `manageFeedbackForm`, `getAdminStatistics`, `exportResults`, `importSeed`.
+Samo admin: `listAdmins`, `addAdmin`, `setAdminActive`, `listAllEvents`, `createEvent`, `updateEvent`, `deleteOrArchiveEvent`, `manageAgenda`, `manageAgendaItems`, `managePoll`, `manageFeedbackForm`, `getAdminStatistics`, `exportResults`, `importSeed`.
 
 Odgovor je uvijek `{ok:true,data}` ili `{ok:false,error:{code,message}}` (HTTP 200, to je ograničenje Apps Scripta). Kodovi: `BAD_REQUEST, UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, CONFLICT, CLOSED, MODE_CHANGED, RATE_LIMITED, BUSY, CONFIG, INTERNAL`.
 
 ## Sigurnosni model
 
 - **Identitet:** samo iz Google ID tokena provjerenog kod Googlea (`aud` = naš Client ID, `iss`, `exp`). Email, uloga, `userSub`, lozinke iz tijela zahtjeva se ne čitaju (test: „klijent ne može nametnuti identitet“).
-- **Admin:** `email_verified` + email = `ADMIN_EMAIL` (+ `hd` ako je `ADMIN_HD` postavljen). Isti kod ide na svaku admin akciju prije prvog čitanja podataka (test prolazi kroz svih 11 admin akcija sa 8 vrsta nevažećih tokena).
+- **Admin:** ovjeren Google identitet čiji je email na listi aktivnih u listu `Admins` (+ vezani Google `sub`; opcionalno `ADMIN_EMAIL_DOMAINS`, `ADMIN_REQUIRE_HD`). Lista se čita pri svakom zahtjevu, pa je opoziv trenutan. Isti kod ide na svaku admin akciju prije čitanja podataka (testovi: 14 admin akcija × 13 vrsta lažnih/nevažećih identiteta, 8 pravih administratora, opozvani i dodani administratori). Detalji: `SECURITY.md`.
 - **Nema tajni u kodu/frontendu:** Client ID je javan; nema client secreta. Test provjerava da `Code.gs` ne sadrži lozinke ni ključeve.
 - **Pisanje:** sve mutacije pod `LockService.getScriptLock()`; ako se brava ne dobije za 20 s, odgovor je `BUSY` i ništa se ne upisuje.
 - **Anonimni feedback:** token se uopće ne provjerava; u listu se ne upisuje identitet, uređaj ni IP (Apps Script IP ne vidi); vrijeme je zaokruženo na dan. Zaštita od zloupotrebe: honeypot polje, ograničenje po nasumičnoj oznaci uređaja (hash sa soli, samo u kešu do 6 h) i po formi. Oznaka uređaja se **ne** upisuje u tabelu.

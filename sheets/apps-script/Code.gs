@@ -5,12 +5,13 @@
  * Web app se objavljuje kao: Execute as = Me, Who has access = Anyone.
  * Identitet se NIKAD ne uzima iz zahtjeva: klijent šalje Google ID token (JWT) koji server
  * provjerava kod Googlea (tokeninfo), uz provjeru `aud` (CLIENT_ID), `exp`, `iss`, `email_verified`.
- * Admin je samo token čiji je verifikovan email jednak ADMIN_EMAIL (Script Properties).
+ * Admin je samo token čiji je verifikovan email na listi aktivnih administratora (list Admins).
  *
  * Script Properties (Project Settings → Script properties):
  *   CLIENT_ID      (obavezno) Google OAuth Web client ID
- *   ADMIN_EMAIL    (opcionalno) default hr@eestec-sa.ba
- *   ADMIN_HD       (opcionalno) npr. eestec-sa.ba — ako je postavljeno, token mora imati isti `hd` claim
+ *   ADMIN_EMAIL_DOMAINS (opcionalno) npr. eestec-sa.ba — ako je postavljeno, administrator može biti samo email iz ovih domena
+ *   ADMIN_REQUIRE_HD    (opcionalno) "true" — token mora imati `hd` claim jednak domeni admin emaila (samo Workspace računi)
+ *   RESET_BINDING_EMAIL (opcionalno, jednokratno) vidi resetAdminBinding()
  *   SPREADSHEET_ID (opcionalno) ako skripta nije ugrađena u tabelu
  *   TOKEN_SALT     (opcionalno) sol za throttling ključeve; generiše se automatski
  */
@@ -28,10 +29,17 @@ var SCHEMA = {
   FeedbackQuestions: ['id', 'formId', 'label', 'type', 'options', 'required', 'position', 'archived'],
   FeedbackResponses: ['id', 'formId', 'submissionId', 'userSub', 'userEmail', 'userName', 'createdAt'],
   FeedbackAnswers: ['id', 'responseId', 'formId', 'questionId', 'questionLabel', 'questionType', 'questionOptions', 'value'],
-  Settings: ['key', 'value']
+  Settings: ['key', 'value'],
+  Admins: ['email', 'active', 'addedAt', 'addedBy', 'sub']
 };
+// Početni administratori. Upisuju se SAMO pri prvoj inicijalizaciji (vidi seedAdmins_), nikad ponovo.
+var INITIAL_ADMINS = [
+  'hr@eestec-sa.ba', 'hana.mahmutovic@eestec-sa.ba', 'chair@eestec-sa.ba', 'pr@eestec-sa.ba',
+  'it@eestec-sa.ba', 'fr@eestec-sa.ba', 'cp@eestec-sa.ba', 'treasurer@eestec-sa.ba'
+];
+var EMAIL_RE = /^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 var NUM_COLS = { year: 1, position: 1, version: 1 };
-var BOOL_COLS = { allowChange: 1, required: 1, archived: 1 };
+var BOOL_COLS = { allowChange: 1, required: 1, archived: 1, active: 1 };
 var PUBLIC_SETTINGS = ['siteTitle', 'organization', 'contactEmail'];
 
 var EVENT_STATUSES = ['DRAFT', 'PUBLISHED', 'COMPLETED', 'ARCHIVED'];
@@ -46,7 +54,8 @@ var QUESTION_TYPES = ['RATING', 'SINGLE', 'MULTI', 'SHORT', 'LONG'];
 var VISIBILITY = ['ALWAYS', 'AFTER_VOTE', 'AFTER_CLOSE', 'ADMIN'];
 var CONFIRM_PHRASE = 'OBRIŠI';
 
-var ctx = { cache: {}, heads: {}, ss: null, identity: null, identityChecked: false };
+function newCtx_() { return { cache: {}, heads: {}, ss: null, identity: null, identityChecked: false, locked: false }; }
+var ctx = newCtx_();
 
 // ───────────────────────── greške i validacija ─────────────────────────
 
@@ -286,12 +295,31 @@ function identity_(p) {
   ctx.identity = p && p.idToken ? verifyToken_(p.idToken) : null;
   return ctx.identity;
 }
-function isAdmin_(id) {
-  if (!id || !id.emailVerified) return false;
-  var admin = (prop_('ADMIN_EMAIL') || 'hr@eestec-sa.ba').toLowerCase();
-  if (id.email !== admin) return false;
-  var hd = (prop_('ADMIN_HD') || '').toLowerCase();
-  return !hd || id.hd === hd;
+function domainOf_(email) { return String(email).split('@')[1] || ''; }
+function allowedDomains_() {
+  return (prop_('ADMIN_EMAIL_DOMAINS') || '').toLowerCase().split(',').map(function (d) { return d.trim(); }).filter(Boolean);
+}
+
+/**
+ * Administrator = ovjeren Google identitet (token već provjeren: aud, iss, exp) + email_verified
+ * + red u listu Admins s active=true. Lista se čita pri SVAKOM zahtjevu (nema keša), pa opoziv važi odmah.
+ * Ako je za red vezan Google sub (vezuje se pri prvoj prijavi), mora se poklapati: štiti od ponovne upotrebe email adrese.
+ * Opcionalna ograničenja (ADMIN_EMAIL_DOMAINS, ADMIN_REQUIRE_HD) su isključena dok se ne postave.
+ */
+function adminRow_(id) {
+  if (!id || !id.emailVerified || !id.email) return null;
+  var row = where_('Admins', function (r) { return r.email.toLowerCase() === id.email; })[0];
+  if (!row || !row.active) return null;
+  if (row.sub && row.sub !== id.sub) { console.warn('Admin sub mismatch for a listed administrator'); return null; }
+  var doms = allowedDomains_();
+  if (doms.length && doms.indexOf(domainOf_(id.email)) < 0) return null;
+  if (prop_('ADMIN_REQUIRE_HD') === 'true' && id.hd !== domainOf_(id.email)) return null;
+  return row;
+}
+function isAdmin_(id) { return !!adminRow_(id); }
+/** Vezanje stabilnog Google sub-a pri prvoj prijavi. Samo unutar zaključane sekcije. */
+function bindSub_(row, id) {
+  if (row && ctx.locked && !row.sub) { row.sub = id.sub; save_('Admins', row); }
 }
 function requireUser_(p) {
   var id = identity_(p);
@@ -301,7 +329,9 @@ function requireUser_(p) {
 function requireAdmin_(p) {
   var id = identity_(p);
   if (!id) fail_('UNAUTHENTICATED', 'Potrebna je prijava.');
-  if (!isAdmin_(id)) fail_('FORBIDDEN', 'Nemate administratorska prava.');
+  var row = adminRow_(id);
+  if (!row) fail_('FORBIDDEN', 'Nemate administratorska prava.');
+  bindSub_(row, id);
   return id;
 }
 
@@ -361,7 +391,50 @@ function listPublishedEvents(p) {
   return { events: evs, settings: settings_(), me: me_(id), version: VERSION };
 }
 
-function whoami(p) { return { me: me_(identity_(p)), version: VERSION }; }
+function whoami(p) {
+  var id = identity_(p);
+  bindSub_(adminRow_(id), id);
+  return { me: me_(id), version: VERSION };
+}
+
+// ───────────────────────── admin: administratori ─────────────────────────
+
+function normEmail_(v) {
+  if (typeof v !== 'string') fail_('BAD_REQUEST', 'Email mora biti tekst.');
+  var e = v.trim().toLowerCase();
+  if (e.length > 254 || !EMAIL_RE.test(e)) fail_('BAD_REQUEST', 'Email adresa nije valjana.');
+  var doms = allowedDomains_();
+  if (doms.length && doms.indexOf(domainOf_(e)) < 0) fail_('BAD_REQUEST', 'Dozvoljeni su samo emailovi iz domena: ' + doms.join(', ') + '.');
+  return e;
+}
+function activeAdmins_() { return where_('Admins', function (r) { return r.active; }); }
+
+function listAdmins(p) {
+  requireAdmin_(p);
+  var rows = read_('Admins');
+  return { admins: rows.map(function (r) { return { email: r.email, active: r.active, addedAt: r.addedAt, addedBy: r.addedBy, signedInBefore: !!r.sub }; }), activeCount: activeAdmins_().length };
+}
+
+function addAdmin(p) {
+  var me = requireAdmin_(p);
+  var email = normEmail_(p.email);
+  if (where_('Admins', function (r) { return r.email.toLowerCase() === email; }).length) fail_('CONFLICT', 'Administrator s tom adresom već postoji (možda je deaktiviran: aktivirajte ga u listi).');
+  append_('Admins', [{ email: email, active: true, addedAt: now_(), addedBy: me.email, sub: '' }]);
+  return { email: email };
+}
+
+function setAdminActive(p) {
+  requireAdmin_(p);
+  var email = normEmail_(p.email);
+  var active = bool_(p.active, 'active');
+  var row = where_('Admins', function (r) { return r.email.toLowerCase() === email; })[0];
+  if (!row) fail_('NOT_FOUND', 'Administrator nije pronađen.');
+  if (row.active === active) return { email: email, active: active };
+  if (!active && activeAdmins_().length <= 1) fail_('CONFLICT', 'Ne možete deaktivirati posljednjeg aktivnog administratora.');
+  row.active = active;
+  save_('Admins', row);
+  return { email: email, active: active };
+}
 
 function canSeeResults_(poll, admin, myVote) {
   if (admin) return true;
@@ -927,7 +1000,7 @@ function importSeed(p) {
   var report = {};
   Object.keys(SCHEMA).forEach(function (name) {
     var rows = data[name];
-    if (!Array.isArray(rows) || name === 'Settings') return;
+    if (!Array.isArray(rows) || name === 'Settings' || name === 'Admins') return;
     if (rows.length > 2000) fail_('BAD_REQUEST', 'Previše redova u ' + name + '.');
     var have = {};
     read_(name).forEach(function (r) { have[r.id] = 1; });
@@ -949,7 +1022,10 @@ function importSeed(p) {
 var ACTIONS = {
   listPublishedEvents: { fn: listPublishedEvents, write: false },
   getEvent: { fn: getEvent, write: false },
-  whoami: { fn: whoami, write: false },
+  whoami: { fn: whoami, write: true },
+  listAdmins: { fn: listAdmins, write: false },
+  addAdmin: { fn: addAdmin, write: true },
+  setAdminActive: { fn: setAdminActive, write: true },
   submitVote: { fn: submitVote, write: true },
   submitFeedback: { fn: submitFeedback, write: true },
   listAllEvents: { fn: listAllEvents, write: false },
@@ -966,14 +1042,15 @@ var ACTIONS = {
 };
 
 function handle_(p) {
-  ctx = { cache: {}, heads: {}, ss: null, identity: null, identityChecked: false };
+  ctx = newCtx_();
   if (!p || typeof p !== 'object' || Array.isArray(p)) fail_('BAD_REQUEST', 'Neispravan zahtjev.');
   if (typeof p.action !== 'string' || !Object.prototype.hasOwnProperty.call(ACTIONS, p.action)) fail_('BAD_REQUEST', 'Nepoznata akcija.');
   var a = ACTIONS[p.action];
   if (!a.write) return a.fn(p);
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) fail_('BUSY', 'Sistem je zauzet. Pokušajte ponovo za nekoliko sekundi.');
-  try { return a.fn(p); } finally { lock.releaseLock(); }
+  ctx.locked = true;
+  try { return a.fn(p); } finally { ctx.locked = false; lock.releaseLock(); }
 }
 
 function respond_(obj) {
@@ -1007,7 +1084,7 @@ function doGet(e) {
 
 /** Pokrenuti jednom iz editora (Run → setup): pravi sve listove sa zaglavljima i početne postavke. */
 function setup() {
-  ctx = { cache: {}, heads: {}, ss: null, identity: null, identityChecked: false };
+  ctx = newCtx_();
   Object.keys(SCHEMA).forEach(function (n) { ensureSheet_(n); });
   var s = read_('Settings');
   if (!s.length) {
@@ -1018,7 +1095,63 @@ function setup() {
     ]);
   }
   salt_();
+  var seeded = seedAdmins_();
   var missing = [];
   if (!prop_('CLIENT_ID')) missing.push('CLIENT_ID');
-  return 'Listovi su spremni.' + (missing.length ? ' Još postavite u Script properties: ' + missing.join(', ') : '');
+  return 'Listovi su spremni.' + (seeded ? ' Početni administratori upisani: ' + seeded + '.' : ' Administratori nisu mijenjani.') + (missing.length ? ' Još postavite u Script properties: ' + missing.join(', ') : '');
+}
+
+/**
+ * Upisuje početne administratore SAMO pri prvoj inicijalizaciji (Script property ADMINS_SEEDED još ne postoji).
+ * Kasnije pokretanje setup() ne dira listu, pa se ukinuti administratori ne vraćaju.
+ * Uvijek se uključuje i račun pod kojim je skripta objavljena (vlasnik).
+ */
+function seedAdmins_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('ADMINS_SEEDED')) return 0;
+  var have = {};
+  read_('Admins').forEach(function (r) { have[r.email.toLowerCase()] = 1; });
+  var list = INITIAL_ADMINS.slice();
+  var owner = ownerEmail_();
+  if (owner && list.indexOf(owner) < 0) list.push(owner);
+  var add = list.filter(function (e) { return !have[e]; }).map(function (e) { return { email: e, active: true, addedAt: now_(), addedBy: 'setup', sub: '' }; });
+  append_('Admins', add);
+  props.setProperty('ADMINS_SEEDED', now_());
+  return add.length;
+}
+function ownerEmail_() {
+  try { return String(Session.getEffectiveUser().getEmail() || '').toLowerCase(); } catch (e) { return ''; }
+}
+
+/**
+ * OPORAVAK PRISTUPA. Pokreće se ručno iz Apps Script editora (Run → recoverAccess) pod računom vlasnika skripte.
+ * NIJE dostupno preko web aplikacije (nije u ACTIONS, nema URL-a): zahtijeva pristup editoru skripte, što je isto povjerenje kao vlasništvo nad njom.
+ * Vraća aktivnim račun vlasnika (dodaje ga ako fali) i briše njegovu vezu sa Google sub-om. Ostale administratore ne dira.
+ */
+function recoverAccess() {
+  ctx = newCtx_();
+  var owner = ownerEmail_();
+  if (!owner) return 'Nije moguće odrediti račun vlasnika.';
+  ensureSheet_('Admins');
+  var row = where_('Admins', function (r) { return r.email.toLowerCase() === owner; })[0];
+  if (row) { row.active = true; row.sub = ''; save_('Admins', row); }
+  else append_('Admins', [{ email: owner, active: true, addedAt: now_(), addedBy: 'recoverAccess', sub: '' }]);
+  return 'Pristup vraćen za ' + owner + '.';
+}
+
+/**
+ * Ako je administrator zaključan zbog promjene Google računa (isti email, drugi sub): u Script properties postavite
+ * RESET_BINDING_EMAIL na tu adresu, pa pokrenite resetAdminBinding(). Svojstvo se nakon toga briše.
+ */
+function resetAdminBinding() {
+  ctx = newCtx_();
+  var props = PropertiesService.getScriptProperties();
+  var email = String(props.getProperty('RESET_BINDING_EMAIL') || '').trim().toLowerCase();
+  if (!email) return 'Postavite RESET_BINDING_EMAIL u Script properties.';
+  var row = where_('Admins', function (r) { return r.email.toLowerCase() === email; })[0];
+  if (!row) return 'Administrator nije pronađen: ' + email;
+  row.sub = '';
+  save_('Admins', row);
+  props.deleteProperty('RESET_BINDING_EMAIL');
+  return 'Veza resetovana za ' + email + '.';
 }

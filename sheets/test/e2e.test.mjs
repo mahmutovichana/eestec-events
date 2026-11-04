@@ -6,6 +6,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import puppeteer from "puppeteer-core";
 import { startDevServer, ADMIN_TOKEN, ANA_TOKEN, BEN_TOKEN } from "../scripts/dev-server.mjs";
+import { makeToken } from "./fake-gas.mjs";
 
 const require = createRequire(import.meta.url);
 const axeSource = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
@@ -271,4 +272,63 @@ test("CSP iz index.html ne blokira aplikaciju: nema CSP povreda u konzoli na klj
     assert.ok((await p.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content)).includes("default-src 'none'"));
     await p.close();
   }
+});
+
+const tokFor = (email, sub) => makeToken({ sub, email, name: email.split("@")[0], hd: "eestec-sa.ba" });
+
+test("administratori: panel prikazuje 8 početnih; dodavanje, deaktivacija uz potvrdu, aktivacija", T, async () => {
+  const p = await open("/admin/_admini", { token: ADMIN_TOKEN });
+  await p.waitForFunction(() => /Aktivni: 8/.test(document.body.innerText), { timeout: 5000 });
+  const t = await text(p);
+  for (const e of ["hana.mahmutovic@eestec-sa.ba", "chair@eestec-sa.ba", "treasurer@eestec-sa.ba"]) assert.ok(t.includes(e), e);
+  await p.type('input[type=email]', "novi.clan@eestec-sa.ba");
+  await clickText(p, "button", "Dodaj");
+  await p.waitForFunction(() => /Aktivni: 9/.test(document.body.innerText), { timeout: 5000 });
+  // duplikat -> greška u toastu, bez nove stavke
+  await p.type('input[type=email]', "NOVI.CLAN@eestec-sa.ba");
+  await clickText(p, "button", "Dodaj");
+  await p.waitForFunction(() => /već postoji/.test(document.body.innerText), { timeout: 5000 });
+  // deaktivacija uz potvrdu
+  const li = 'ul.opts-admin li:has(b)';
+  await p.evaluate(() => { const row = [...document.querySelectorAll("ul.opts-admin li")].find((l) => l.textContent.includes("novi.clan@")); row.querySelector("button").click(); });
+  await p.waitForSelector('div[role="dialog"]');
+  await clickText(p, "div[role=dialog] button", "Deaktiviraj");
+  await p.waitForFunction(() => /Aktivni: 8/.test(document.body.innerText), { timeout: 5000 });
+  await p.evaluate(() => { const row = [...document.querySelectorAll("ul.opts-admin li")].find((l) => l.textContent.includes("novi.clan@")); [...row.querySelectorAll("button")].find((b) => /Aktiviraj/.test(b.textContent)).click(); });
+  await p.waitForFunction(() => /Aktivni: 9/.test(document.body.innerText), { timeout: 5000 });
+  assert.equal(srv.g.rows("Admins").length, 9);
+  await p.close();
+});
+
+test("administratori: svih 8 računa ulazi u administraciju; običan korisnik i deaktiviran admin ne ulaze", T, async () => {
+  for (const e of ["hr@eestec-sa.ba", "hana.mahmutovic@eestec-sa.ba", "chair@eestec-sa.ba", "pr@eestec-sa.ba", "it@eestec-sa.ba", "fr@eestec-sa.ba", "cp@eestec-sa.ba", "treasurer@eestec-sa.ba"]) {
+    const p = await open("/admin", { token: tokFor(e, e === "hr@eestec-sa.ba" ? "1001" : "ui-" + e) }); // hr je već vezan za sub 1001
+    await p.waitForFunction(() => /Novi događaj/.test(document.body.innerText), { timeout: 5000 });
+    await p.close();
+  }
+  const user = await open("/admin/_admini", { token: ANA_TOKEN });
+  assert.match(await text(user), /Nemate pristup/);
+  assert.ok(!/Email novog administratora/.test(await text(user)));
+  await user.close();
+  srv.g.call({ action: "setAdminActive", idToken: ADMIN_TOKEN, email: "cp@eestec-sa.ba", active: false });
+  const revoked = await open("/admin", { token: tokFor("cp@eestec-sa.ba", "ui-cp@eestec-sa.ba") });
+  assert.match(await text(revoked), /Nemate pristup/);
+  await revoked.close();
+  srv.g.call({ action: "setAdminActive", idToken: ADMIN_TOKEN, email: "cp@eestec-sa.ba", active: true });
+});
+
+test("administratori: pristupačnost panela (axe) i bez horizontalnog scrolla", T, async () => {
+  const bad = [];
+  for (const w of [1280, 390, 320]) {
+    const p = await open("/admin/_admini", { token: ADMIN_TOKEN, width: w });
+    await p.waitForFunction(() => /Aktivni:/.test(document.body.innerText));
+    if (w !== 320) {
+      await p.evaluate(axeSource);
+      const r = await p.evaluate(() => axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa", "best-practice"] } }));
+      for (const v of r.violations) bad.push(`@${w}: ${v.id} ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
+    }
+    assert.ok((await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0, `scroll @${w}`);
+    await p.close();
+  }
+  assert.deepEqual(bad, []);
 });
