@@ -8,7 +8,10 @@ Poredano po važnosti. Ništa od ovoga ne blokira kod, ali stavke 1 i 2 treba za
    (nevažeća sesija, callback greška, preusmjeravanje na prijavu, zaglavlja, odjava), i svi tokovi uz simuliranu sesiju. Prvu prijavu admina treba provjeriti ručno
    (lista u [DEPLOYMENT.md](DEPLOYMENT.md)). Posebno provjeriti: istek sesije nakon 24 h neaktivnosti, `email_verified` za `hr@eestec-sa.ba`, odjavu.
 2. **Produkcijska baza i hosting.** Napraviti PostgreSQL, uključiti sigurnosne kopije, postaviti varijable, primijeniti migracije uz svježu kopiju.
-3. **Pull request nije spojen.** Grana je spremna za pregled; spajanje je odluka vlasnika repozitorija.
+3. **Grana nije gurnuta na GitHub, pull request nije otvoren.** U okruženju u kojem je rad urađen nema pohranjenih GitHub kredencijala
+   (`git push` traži prijavu, a prompt je onemogućen). Commitovi su spremni na lokalnoj grani `feat/production-readiness-finalization`.
+   Ručno: `git push -u origin feat/production-readiness-finalization`, pa otvoriti PR prema `main` (opis i dokazi su u `docs/`).
+   Spajanje PR-a je odluka vlasnika repozitorija.
 
 ## Poznata ograničenja
 
