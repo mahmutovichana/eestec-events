@@ -1,4 +1,5 @@
 // STVARNI smoke test: izgrađeni frontend (sa pravnim config.js) u pravom Chrome-u protiv STVARNOG Apps Script deploymenta.
+// SMOKE_URL=https://mahmutovichana.github.io/eestec-events node sheets/scripts/real-smoke.mjs  testira objavljenu stranicu sa stvarnog origina.
 // Samo čitanje: poziva javne akcije bez prijave, ništa ne upisuje u tabelu. Pokretanje: node sheets/scripts/real-smoke.mjs
 // Ne može provjeriti Google prijavu (traži ručni klik pravog korisnika) niti admin akcije.
 import http from "node:http";
@@ -14,6 +15,7 @@ const cfg = fs.readFileSync(path.join(dist, "config.js"), "utf8");
 const API = /apiUrl:\s*"([^"]+)"/.exec(cfg)?.[1];
 if (!API) { console.error("config.js nema apiUrl"); process.exit(2); }
 
+const REMOTE = process.env.SMOKE_URL; // npr. https://mahmutovichana.github.io/eestec-events (stvarni objavljeni origin)
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, "http://x");
   let f = path.join(dist, u.pathname === "/" ? "index.html" : u.pathname);
@@ -24,8 +26,8 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": MIME[path.extname(f)] || "application/octet-stream" });
   res.end(body);
 });
-await new Promise((r) => server.listen(0, "127.0.0.1", r));
-const origin = `http://127.0.0.1:${server.address().port}`;
+if (!REMOTE) await new Promise((r) => server.listen(0, "127.0.0.1", r));
+const origin = REMOTE ? REMOTE.replace(/\/+$/, "") : `http://127.0.0.1:${server.address().port}`;
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox"] });
 const results = [];
@@ -69,7 +71,7 @@ try {
   check("preveliko tijelo (>200 KB) odbijeno", out.big.error?.code === "BAD_REQUEST");
 } finally {
   await browser.close();
-  server.close();
+  if (!REMOTE) server.close();
 }
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} provjera prošlo`);

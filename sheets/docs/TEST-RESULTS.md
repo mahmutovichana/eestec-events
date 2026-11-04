@@ -51,7 +51,7 @@ Jedan UI test (cijeli admin tok) je bio nestabilan (1 od 3 pokretanja) zbog utrk
 
 ## Stvarna integracija (`node sheets/scripts/real-smoke.mjs`): 12/12 PASS
 
-Stvarni Chrome + stvarni Apps Script deployment (samo čitanje, bez prijave). Dokazuje: POST kao `text/plain`, bez preflighta, redirect na `script.googleusercontent.com`, `Access-Control-Allow-Origin: *`, odgovor servera prikazan u stranici, admin akcije bez prijave odbijene, deploy je verzija sa više administratora, lažni token stiže do Googlea i biva odbijen bez `INTERNAL` greške, tabela anonimno vraća 401. **Ne dokazuje** Google prijavu ni admin funkcije (traže ručni klik pravog korisnika; `INTEGRATION-CHECKLIST.md`), niti origin `github.io` (stranica još nije objavljena).
+Stvarni Chrome + stvarni Apps Script deployment (samo čitanje, bez prijave). Dokazuje: POST kao `text/plain`, bez preflighta, redirect na `script.googleusercontent.com`, `Access-Control-Allow-Origin: *`, odgovor servera prikazan u stranici, admin akcije bez prijave odbijene, deploy je verzija sa više administratora, lažni token stiže do Googlea i biva odbijen bez `INTERNAL` greške, tabela anonimno vraća 401. Ponovljeno sa **stvarnog origina** `https://mahmutovichana.github.io` (`SMOKE_URL=…`): također 12/12, uključujući CORS i redirect. **Ne dokazuje** Google prijavu ni admin funkcije (traže ručni klik pravog korisnika; `INTEGRATION-CHECKLIST.md`).
 
 ## Šta nije izvršeno
 
@@ -65,6 +65,6 @@ Stvarni Chrome + stvarni Apps Script deployment (samo čitanje, bez prijave). Do
 | Izvoz iz stvarne razvojne baze | **BLOCKED** | Docker nije bio pokrenut |
 | Čitač ekrana, stvarni mobilni uređaji | **NOT RUN** | ručna provjera; testirana emulacija i 6 širina |
 | GitHub Pages workflow na GitHubu | **NOT RUN** | izvršava se tek na GitHubu; lokalno provjereno: valjan YAML, čist `npm ci` + build, artefakt pod `/eestec-events/` |
-| Javni URL-ovi na github.io | **FAIL u trenutku provjere** | `/`, `/privacy/`, `/terms/` vraćaju 404 dok se Pages ne uključi i workflow ne izvrši (SETUP.md korak 5a) |
+| Javni URL-ovi na github.io | **PASS** (kasnija provjera) | `/`, `/privacy/`, `/terms/`, `/config.js` vraćaju 200 nakon uspješnog deploya (run #2); ranije su vraćali 404 dok grana nije dozvoljena u okruženju |
 
 Prije stvarne upotrebe odradite „Korak 6: Provjera“ iz `SETUP.md`: to je zamjena za sve BLOCKED stavke.

@@ -111,7 +111,7 @@ Napomena: „Execute as: Me“ znači da skripta piše u tabelu kao vlasnik. Zat
 
 ## Korak 5: Frontend (GitHub Pages)
 
-**Trenutno stanje (provjereno HTTP zahtjevom): `https://mahmutovichana.github.io/eestec-events/`, `/privacy/` i `/terms/` vraćaju 404.** Razlog: GitHub Pages nije uključen s izvorom „GitHub Actions“, a radni tok objave postoji samo na grani `feat/sheets-simplification` (repozitorij je prije toga imao 0 registrovanih workflow-a). Dok se ovo ne riješi, homepage u Google konzoli pokazuje na stranicu koja ne postoji.
+**Trenutno stanje (provjereno HTTP zahtjevom i stvarnim Chromeom): stranica je objavljena.** `https://mahmutovichana.github.io/eestec-events/`, `/privacy/` i `/terms/` vraćaju 200, a GitHub Pages run #1 i #2 na grani `feat/sheets-simplification` su uspjeli (build i deploy). Koraci ispod su zadržani kao uputa za ponavljanje/novo okruženje.
 
 ### 5a. Pustiti stranicu na mrežu (prije Branding provjere)
 

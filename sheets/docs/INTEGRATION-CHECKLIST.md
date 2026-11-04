@@ -19,13 +19,13 @@ Stvarni Chrome, izgrađeni frontend sa stvarnim `config.js`, stvarni Apps Script
 | `config.js` ima stvarni Client ID | PASS |
 | Google tabela anonimno: HTTP 401 (nije javna) | PASS (provjereno posebno) |
 
-Pokrenuto s `http://127.0.0.1` origina. **Nije** provjereno s origina `https://mahmutovichana.github.io` jer stranica još nije objavljena (deploy čeka dozvolu grane, `SETUP.md` 5a). CORS odgovor je `*`, pa se za taj origin ne očekuje razlika, ali potvrdite u C.
+Isti test je ponovljen i **sa stvarnog objavljenog origina** `SMOKE_URL=https://mahmutovichana.github.io/eestec-events node sheets/scripts/real-smoke.mjs`: **12/12 PASS** (GitHub Pages run #2, deploy uspio; `/`, `/privacy/`, `/terms/` vraćaju 200). Dodatno: na živoj stranici Google dugme za prijavu se renderuje (iframe `accounts.google.com/gsi/button`) bez GSI greške o originu u konzoli, što ukazuje da je origin `https://mahmutovichana.github.io` ispravno registrovan. Stvarna prijava nije probana.
 
 ## B. Zahtijeva vaš ručni pristup (ne mogu ih uraditi)
 
 | # | Radnja | Ko |
 |---|---|---|
-| B1 | GitHub: Settings → Environments → github-pages → dozvoliti granu `feat/sheets-simplification`; Actions → Re-run failed jobs | admin repozitorija |
+| B1 | ~~GitHub: dozvoliti granu u okruženju github-pages~~ **urađeno** (run #1 i #2 uspjeli) | — |
 | B2 | Apps Script: zalijepiti **novi** `Code.gs`, **Deploy → Manage deployments → ✏ → New version → Deploy** (URL ostaje isti) | hana.mahmutovic@ |
 | B3 | Apps Script: pokrenuti `setup` jednom (pravi list `AuditLog`, ne dira administratore) | hana.mahmutovic@ |
 | B4 | Script properties: `CLIENT_ID` = `406203316711-fn9te97d8n67ff5gelc2e6cssnacvml2.apps.googleusercontent.com` (već postavljeno prema smoke testu, jer server odbija tokene umjesto `CONFIG` greške) | hana.mahmutovic@ |
