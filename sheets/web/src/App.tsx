@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminEvent, AdminGate, AdminAdmins, AdminHome, AdminImport } from "./admin";
 import { AuthProvider, GoogleSignIn, useAuth } from "./auth";
 import { EventPage, Home } from "./public";
-import { ToastProvider, useToast } from "./ui";
+import { Spinner, ToastProvider, useToast } from "./ui";
 
 function useRoute() {
   const get = () => location.hash.replace(/^#/, "") || "/";
@@ -39,11 +39,15 @@ function Shell({ nav, children }: { nav: (to: string) => void; children: React.R
           <div className="wrap"><div className="login-pop" role="dialog" aria-label="Prijava">
             <p>Prijava je potrebna samo za glasanje i identificirani feedback.</p>
             <GoogleSignIn />
+            <p className="muted">Prijavom prihvatate <a href="./terms/">Uslove korištenja</a> i <a href="./privacy/">Politiku privatnosti</a>.</p>
           </div></div>
         )}
       </header>
       <main id="main" className="wrap" tabIndex={-1}>{children}</main>
-      <footer className="wrap foot">EESTEC LC Sarajevo · <a href="https://eestec-sa.ba/">eestec-sa.ba</a></footer>
+      <footer className="wrap foot">
+        <span>EESTEC LC Sarajevo · <a href="https://eestec-sa.ba/">eestec-sa.ba</a></span>
+        <nav aria-label="Pravne informacije"><a href="./privacy/">Privatnost</a><a href="./terms/">Uslovi korištenja</a></nav>
+      </footer>
     </>
   );
 }
@@ -52,8 +56,12 @@ function Routes() {
   const { path, nav } = useRoute();
   const parts = path.split("/").filter(Boolean);
   useEffect(() => { document.title = "EESTEC LC Sarajevo — Events"; }, [path]);
+  // #/privacy i #/terms vode na statične stranice (čitljive i bez JavaScripta; potrebne za Google OAuth)
+  const legal = parts.length === 1 && (parts[0] === "privacy" || parts[0] === "terms") ? parts[0] : null;
+  useEffect(() => { if (legal) location.replace(`./${legal}/`); }, [legal]);
   let page: React.ReactNode;
-  if (parts[0] === "e" && parts[1]) page = <EventPage slug={parts[1]} tab={parts[2] ?? ""} nav={nav} />;
+  if (legal) page = <Spinner />;
+  else if (parts[0] === "e" && parts[1]) page = <EventPage slug={parts[1]} tab={parts[2] ?? ""} nav={nav} />;
   else if (parts[0] === "admin") page = <AdminGate>{parts[1] === "_admini" ? <AdminAdmins nav={nav} /> : parts[1] === "_uvoz" ? <AdminImport nav={nav} /> : parts[1] ? <AdminEvent slug={parts[1]} tab={parts[2] ?? ""} nav={nav} /> : <AdminHome nav={nav} />}</AdminGate>;
   else if (parts.length === 0) page = <Home nav={nav} />;
   else page = <div className="empty"><h2>Stranica ne postoji</h2><p><a href="#/">Nazad na događaje</a></p></div>;

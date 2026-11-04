@@ -212,7 +212,9 @@ fieldset:disabled{opacity:.6}
 .counts{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .counts li{display:flex;justify-content:space-between;background:var(--soft);padding:8px 12px;border-radius:10px}
 .texts{margin:8px 0 0 18px;display:flex;flex-direction:column;gap:6px}
-.foot{padding:24px 20px 40px;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+.foot{padding:24px 20px 40px;color:var(--muted);font-size:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.foot nav{display:flex;gap:6px;flex-wrap:wrap}
+.foot nav a{display:inline-flex;align-items:center;min-height:44px;padding:0 10px}
 
 @media (max-width:640px){
   .wrap{padding:0 16px}

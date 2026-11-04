@@ -60,6 +60,36 @@ Administratori su u listu **`Admins`** unutar tabele. Pri prvom pokretanju `setu
    - **Create**, kopirajte **Client ID**. Client secret ne trebate i ne unosite nigdje.
 4. Upišite `CLIENT_ID` u Script properties (korak 2.4).
 
+## Korak 3b: Branding (Google Auth Platform → Branding)
+
+Pravne stranice su dio aplikacije i moraju biti javno dostupne prije objave (korak 5). Unesite **tačno ove adrese** (zamijenite `IMEKORISNIKA`; zadnja kosa crta je obavezna):
+
+| Polje u Branding | Vrijednost |
+|---|---|
+| App name | `EESTEC Events` |
+| User support email | `hana.mahmutovic@eestec-sa.ba` |
+| App logo (opcionalno) | `sheets/web/public/eestec-logo.png` (kvadratni logo ≤ 1 MB; logo je razlog zašto Google može tražiti verifikaciju brenda, vidi dolje) |
+| **Application home page** | `https://IMEKORISNIKA.github.io/eestec-events/` |
+| **Application privacy policy link** | `https://IMEKORISNIKA.github.io/eestec-events/privacy/` |
+| **Application terms of service link** | `https://IMEKORISNIKA.github.io/eestec-events/terms/` |
+| Authorized domains | vidi ispod |
+| Developer contact information | `hana.mahmutovic@eestec-sa.ba` |
+
+**Authorized domains i github.io:** Google traži da domene linkova budu u „Authorized domains“ i da ih posjedujete. `github.io` je zajednička domena koju ne možete verificirati kao svoju. Zato:
+
+- **Preporučeno: vlastita poddomena** (račun Workspace organizacije već posjeduje `eestec-sa.ba`). U DNS-u dodajte `CNAME events → IMEKORISNIKA.github.io`, u GitHub **Settings → Pages → Custom domain** upišite `events.eestec-sa.ba` i uključite **Enforce HTTPS**. Tada su adrese:
+  - home page `https://events.eestec-sa.ba/`
+  - privacy `https://events.eestec-sa.ba/privacy/`
+  - terms `https://events.eestec-sa.ba/terms/`
+  - Authorized domains: `eestec-sa.ba`; Authorized JavaScript origin u koraku 3.3 postaje `https://events.eestec-sa.ba` (ne github.io).
+  - Domenu možda treba verificirati u Google Search Console (DNS TXT zapis) pod istim računom.
+- **Bez vlastite domene:** unesite github.io adrese iz tabele iznad i ostavite Authorized domains prazno. **Nije potvrđeno** da će Google to prihvatiti pri verifikaciji brenda. Za osnovne opsege (`openid`, `email`, `profile`) aplikacija se može objaviti („In production“) bez verifikacije, ali polja Branding i logo mogu pokrenuti pregled. Ako Google odbije, koristite vlastitu poddomenu.
+
+**Prije klika na „Publish app“:**
+1. Pravne stranice moraju biti objavljene (korak 5) i otvoriti se bez prijave: otvorite sva tri linka u anonimnom prozoru.
+2. U stranicama ne smije ostati nijedna žuta oznaka `[POTVRDITI]`: pročitajte `LEGAL.md` i donesite navedene odluke. Provjera: `grep -c 'class="confirm"' sheets/web/public/*/index.html` mora dati 0.
+3. Ne tražite osjetljive opsege; ostavite samo `openid`, `email`, `profile`.
+
 ## Korak 4: Objava skripte kao web aplikacije (pod računom vlasnika)
 
 1. Apps Script: **Deploy → New deployment → ⚙ → Web app**.
@@ -114,6 +144,7 @@ Ne postoji web adresa, tajna ni parametar kojim se ovo može pokrenuti izvana: z
 - [ ] Napraviti tabelu i zalijepiti kod pod `hana.mahmutovic@eestec-sa.ba` (korak 1–2)
 - [ ] Odobriti dozvole skripti i pokrenuti `setup` (2.5)
 - [ ] Google Cloud projekt: OAuth ekran External + Published, Web client ID (korak 3)
+- [ ] Popuniti Branding sa tačnim adresama (korak 3b), donijeti odluke iz `LEGAL.md`, tek onda „Publish app“
 - [ ] Objaviti web aplikaciju: Execute as Me, Anyone (korak 4)
 - [ ] Upisati `apiUrl` i `clientId` u `config.js`, uključiti GitHub Pages (korak 5)
 - [ ] Odraditi provjeru iz koraka 6 sa stvarnim računima (posebno svih osam administratora i jedan običan račun)

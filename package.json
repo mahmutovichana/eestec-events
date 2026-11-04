@@ -14,7 +14,7 @@
     "postinstall": "prisma generate",
     "test:unit": "node --test test/unit.test.mjs test/roles.test.mjs test/actions-guard.test.mjs",
     "sheets:build": "npm --prefix sheets/web run build",
-    "sheets:test": "node --test sheets/test/backend.test.mjs sheets/test/migration.test.mjs sheets/test/admins.test.mjs sheets/test/e2e.test.mjs",
+    "sheets:test": "node --test sheets/test/backend.test.mjs sheets/test/migration.test.mjs sheets/test/admins.test.mjs sheets/test/legal.test.mjs sheets/test/e2e.test.mjs",
     "sheets:dev": "node sheets/scripts/dev-server.mjs"
   },
   "prisma": {

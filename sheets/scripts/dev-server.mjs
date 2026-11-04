@@ -63,6 +63,7 @@ export async function startDevServer({ port = 0, withSeed = true } = {}) {
       return res.end(html);
     }
     let file = path.join(dist, url.pathname);
+    if (fs.existsSync(file) && fs.statSync(file).isDirectory() && url.pathname.endsWith("/")) file = path.join(file, "index.html"); // kao GitHub Pages
     if (!file.startsWith(dist) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end("not found"); }
     res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
     fs.createReadStream(file).pipe(res);

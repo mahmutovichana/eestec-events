@@ -332,3 +332,49 @@ test("administratori: pristupačnost panela (axe) i bez horizontalnog scrolla", 
   }
   assert.deepEqual(bad, []);
 });
+
+test("pravne stranice: dostupne bez prijave, linkovi iz podnožja i prijave, hash rute, povratak", T, async () => {
+  const p = await open("/");
+  const links = await p.$$eval('footer nav a', (as) => as.map((a) => a.textContent));
+  assert.deepEqual(links, ["Privatnost", "Uslovi korištenja"]);
+  await clickText(p, "button", "Prijava");
+  assert.ok(await p.$('.login-pop a[href="./privacy/"]'));
+  assert.ok(await p.$('.login-pop a[href="./terms/"]'));
+  await Promise.all([p.waitForNavigation(), p.click('footer nav a[href="./privacy/"]')]);
+  assert.match(p.url(), /\/privacy\/$/);
+  assert.match(await text(p), /Politika privatnosti/);
+  assert.match(await text(p), /Privacy Policy \(English\)/);
+  await Promise.all([p.waitForNavigation(), clickText(p, "footer a", "Uslovi")]);
+  assert.match(p.url(), /\/terms\/$/);
+  assert.match(await text(p), /Uslovi korištenja/);
+  await Promise.all([p.waitForNavigation(), clickText(p, "header a", "EESTEC Events")]);
+  await p.waitForFunction(() => /Događaji/.test(document.body.innerText), { timeout: 5000 });
+  await p.goto(srv.url + "/#/privacy", { waitUntil: "networkidle0" });
+  assert.match(p.url(), /\/privacy\/$/);
+  await p.goto(srv.url + "/#/terms", { waitUntil: "networkidle0" });
+  assert.match(p.url(), /\/terms\/$/);
+  await p.close();
+});
+
+test("pravne stranice: čist browser (bez tokena), axe 0 povreda, bez horizontalnog scrolla, bez CSP povreda", T, async () => {
+  const bad = [];
+  for (const path of ["/privacy/", "/terms/"]) {
+    for (const w of [1280, 390, 320]) {
+      const p = await browser.newPage();
+      await p.setViewport({ width: w, height: 800 });
+      const csp = [];
+      p.on("console", (m) => { if (/Content Security Policy/i.test(m.text()) && !/fonts\.g/.test(m.text())) csp.push(m.text()); });
+      const res = await p.goto(srv.url + path, { waitUntil: "networkidle0" });
+      assert.equal(res.status(), 200, path);
+      if (w !== 320) {
+        await p.evaluate(axeSource);
+        const r = await p.evaluate(() => axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa", "best-practice"] } }));
+        for (const v of r.violations) bad.push(`${path} @${w}: ${v.id} ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
+      }
+      assert.ok((await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0, `scroll ${path} @${w}`);
+      assert.deepEqual(csp, []);
+      await p.close();
+    }
+  }
+  assert.deepEqual(bad, []);
+});

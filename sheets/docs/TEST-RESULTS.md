@@ -22,11 +22,12 @@ Prijava u UI testovima je **simulirana** (osam administratorskih računa je tako
 |---|---|
 | `tsc --noEmit` (frontend) | **PASS**, 0 grešaka |
 | `vite build` | **PASS** (JS 272 kB, 83 kB gzip; CSS 15 kB) |
-| `npm run sheets:test` | **PASS**: 86 testova, 86 prošlo, 0 palo, 0 preskočeno |
+| `npm run sheets:test` | **PASS**: 94 testa, 94 prošla, 0 palo, 0 preskočeno |
 | Backend (`backend.test.mjs`) | **PASS** 36/36 |
 | Autorizacija i administratori (`admins.test.mjs`) | **PASS** 25/25 |
 | Mapiranje migracije (`migration.test.mjs`) | **PASS** 5/5 |
-| Browser (`e2e.test.mjs`, Chrome) | **PASS** 20/20 |
+| Pravne stranice, statički (`legal.test.mjs`) | **PASS** 6/6 |
+| Browser (`e2e.test.mjs`, Chrome) | **PASS** 22/22 |
 | axe-core WCAG 2.0/2.1/2.2 A/AA + best-practice, 10 stranica × 2 širine (javne + admin) | **PASS**, 0 povreda (jedna povreda `target-size` je uhvaćena i ispravljena tokom rada) |
 | Bez horizontalnog scrolla, 8 stranica × 6 širina (320/375/390/768/1024/1440) | **PASS** |
 | `eslint` za `sheets/web` | **NOT RUN** (nije konfigurisan za ovaj podprojekt) |
