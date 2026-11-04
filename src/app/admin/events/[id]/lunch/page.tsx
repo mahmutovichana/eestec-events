@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { requireAdminPage } from "@/lib/session";
 import { AForm } from "@/components/AForm";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { createOption, createPoll, deleteOption, deletePoll, clearVotes, updateOption, updatePoll } from "../../../actions";
+import { createOption, createPoll, deleteOption, deletePoll, clearVotes, restoreOption, updateOption, updatePoll } from "../../../actions";
 
 export const metadata = { title: "Lunch Poll" };
 
@@ -22,7 +22,10 @@ export default async function LunchAdmin({ params }: { params: Promise<{ id: str
       {polls.length === 0 ? <div className="empty"><h2>Nema anketa za ručak</h2><p>Kreiraj anketu i dodaj opcije.</p></div> : null}
       {polls.map((poll) => {
         const total = poll.votes.length;
-        const legacy = poll.votes.filter((v) => !v.userId).length;
+        const legacy = poll.votes.filter((v) => !v.userId && v.voterHash).length;
+        const orphan = poll.votes.filter((v) => !v.userId && !v.voterHash).length;
+        const active = poll.options.filter((o) => !o.archivedAt);
+        const archived = poll.options.filter((o) => o.archivedAt);
         const max = Math.max(1, ...poll.options.map((o) => poll.votes.filter((v) => v.optionId === o.id).length));
         return (
           <section key={poll.id} className="panel" style={{ marginTop: 0 }}>
@@ -40,9 +43,9 @@ export default async function LunchAdmin({ params }: { params: Promise<{ id: str
               </div>
             </AForm>
 
-            <h3 className="sect">Rezultati · {total} glasova{legacy ? ` (${legacy} starih anonimnih)` : ""}</h3>
-            {poll.options.length === 0 ? <p className="hint">Dodaj opcije ispod.</p> : null}
-            {poll.options.map((o) => {
+            <h3 className="sect">Rezultati · {total} glasova{legacy ? ` (${legacy} starih anonimnih)` : ""}{orphan ? ` (${orphan} od obrisanih korisnika)` : ""}</h3>
+            {active.length === 0 ? <p className="hint">Dodaj opcije ispod.</p> : null}
+            {active.map((o) => {
               const v = poll.votes.filter((x) => x.optionId === o.id);
               const pct = total ? Math.round((v.length / total) * 100) : 0;
               return (
@@ -50,9 +53,10 @@ export default async function LunchAdmin({ params }: { params: Promise<{ id: str
                   <AForm action={updateOption}>
                     <input type="hidden" name="id" value={o.id} />
                     <div className="grid2">
-                      <label className="f">Naziv<input type="text" name="name" defaultValue={o.name} required maxLength={120} /></label>
+                      <label className="f">Naziv<input type="text" name="name" defaultValue={o.name} required maxLength={120} readOnly={v.length > 0} aria-describedby={v.length ? `ro-${o.id}` : undefined} /></label>
                       <label className="f">Alergeni / sastojci<input type="text" name="allergens" defaultValue={o.allergens} placeholder="gluten, mlijeko" /></label>
                     </div>
+                    {v.length > 0 ? <p className="hint" id={`ro-${o.id}`}>Naziv se ne može mijenjati jer opcija ima glasove. Za promjenu dodaj novu opciju i arhiviraj ovu.</p> : null}
                     <label className="f">Opis<input type="text" name="description" defaultValue={o.description} /></label>
                     <div className="bar-row">
                       <div className="top"><span>{v.length} glasova</span><span>{pct}%</span></div>
@@ -63,7 +67,7 @@ export default async function LunchAdmin({ params }: { params: Promise<{ id: str
                         <summary>Ko je glasao ({v.length})</summary>
                         <ul>
                           {v.map((x) => (
-                            <li key={x.id}>{x.user ? <>{x.user.name} <small>{x.user.email}</small></> : <em>Stari anonimni glas (prije prelaska na račune)</em>}</li>
+                            <li key={x.id}>{x.user ? <>{x.user.name} <small>{x.user.email}</small></> : x.voterHash ? <em>Stari anonimni glas (prije prelaska na račune)</em> : <em>Glas obrisanog korisnika</em>}</li>
                           ))}
                         </ul>
                       </details>
@@ -73,11 +77,33 @@ export default async function LunchAdmin({ params }: { params: Promise<{ id: str
                     </div>
                   </AForm>
                   <div style={{ marginTop: 8 }}>
-                    <ConfirmButton action={deleteOption} fields={{ id: o.id }} title="Obrisati opciju?" message={`"${o.name}" i ${v.length} glasova za nju bit će obrisani.`}>Obriši opciju</ConfirmButton>
+                    <ConfirmButton
+                      action={deleteOption} fields={{ id: o.id }}
+                      title={v.length ? "Arhivirati opciju?" : "Obrisati opciju?"}
+                      message={v.length ? `"${o.name}" ima ${v.length} glasova. Opcija nestaje s glasanja, a glasovi ostaju u rezultatima.` : `"${o.name}" će biti obrisana.`}
+                      confirmLabel={v.length ? "Arhiviraj" : "Obriši"}
+                    >
+                      {v.length ? "Arhiviraj opciju" : "Obriši opciju"}
+                    </ConfirmButton>
                   </div>
                 </div>
               );
             })}
+
+            {archived.length > 0 ? (
+              <>
+                <h3 className="sect">Arhivirane opcije</h3>
+                {archived.map((o) => {
+                  const n = poll.votes.filter((x) => x.optionId === o.id).length;
+                  return (
+                    <div className="item disabled" key={o.id}>
+                      <div className="top"><b>{o.name}</b><span className="pill HIDDEN">Arhivirano</span><span>{n} glasova (ostaju u rezultatima)</span></div>
+                      <AForm action={restoreOption}><input type="hidden" name="id" value={o.id} /><button className="btn ghost sm">Vrati opciju</button></AForm>
+                    </div>
+                  );
+                })}
+              </>
+            ) : null}
 
             <AForm action={createOption} className="item" resetOnSuccess>
               <input type="hidden" name="pollId" value={poll.id} />
@@ -90,8 +116,8 @@ export default async function LunchAdmin({ params }: { params: Promise<{ id: str
             </AForm>
 
             <div className="actions" style={{ marginTop: 16 }}>
-              <ConfirmButton action={clearVotes} fields={{ id: poll.id }} title="Obrisati sve glasove?" message="Svi glasovi u ovoj anketi bit će obrisani. Korisnici mogu ponovo glasati." confirmLabel="Obriši glasove" className="btn ghost sm">Resetuj glasove</ConfirmButton>
-              <ConfirmButton action={deletePoll} fields={{ id: poll.id }} title="Obrisati anketu?" message="Anketa, opcije i glasovi bit će trajno obrisani.">Obriši anketu</ConfirmButton>
+              <ConfirmButton action={clearVotes} fields={{ id: poll.id }} title="Obrisati sve glasove?" message={`Svih ${total} glasova u ovoj anketi bit će trajno obrisano. Korisnici mogu ponovo glasati.`} confirmLabel="Obriši glasove" phrase="OBRIŠI" className="btn ghost sm">Resetuj glasove</ConfirmButton>
+              <ConfirmButton action={deletePoll} fields={{ id: poll.id }} title="Obrisati anketu?" message={total ? `Anketa, opcije i ${total} glasova bit će trajno obrisani.` : "Anketa i opcije bit će obrisane."} phrase={total ? "OBRIŠI" : undefined}>Obriši anketu</ConfirmButton>
             </div>
           </section>
         );

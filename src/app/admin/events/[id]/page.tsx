@@ -50,10 +50,16 @@ export default async function EventSettings({ params }: { params: Promise<{ id: 
 
       <section className="panel danger">
         <h2>Brisanje događaja</h2>
-        <p className="hint">Trajno briše događaj sa svim agendama, anketama, glasovima i feedbackom. Ovo se ne može poništiti.</p>
-        <ConfirmButton action={deleteEvent} fields={{ id: p.id }} title="Obrisati događaj?" message={`"${p.name}" i svi povezani podaci bit će trajno obrisani.`} confirmLabel="Obriši trajno">
-          Obriši događaj
-        </ConfirmButton>
+        {p.status === "DRAFT" || p.status === "ARCHIVED" ? (
+          <>
+            <p className="hint">Trajno briše događaj sa svim agendama, anketama, glasovima i feedbackom. Ovo se ne može poništiti. Ako želiš sačuvati historiju, ostavi događaj arhiviran.</p>
+            <ConfirmButton action={deleteEvent} fields={{ id: p.id }} title="Obrisati događaj?" message={`"${p.name}" i svi povezani podaci bit će trajno obrisani.`} confirmLabel="Obriši trajno" phrase={p.name}>
+              Obriši događaj
+            </ConfirmButton>
+          </>
+        ) : (
+          <p className="hint">Objavljen ili završen događaj se ne može obrisati. Prvo ga arhiviraj, pa će brisanje biti dostupno.</p>
+        )}
       </section>
     </>
   );

@@ -10,7 +10,7 @@ export default async function FeedbackTab({ params }: { params: Promise<{ projec
   const user = await getCurrentUser();
   const p = await db.project.findUnique({
     where: { slug: project },
-    include: { forms: { orderBy: { id: "asc" }, include: { questions: { where: { enabled: true }, orderBy: { position: "asc" } } } } },
+    include: { forms: { orderBy: { id: "asc" }, include: { questions: { where: { enabled: true, archivedAt: null }, orderBy: { position: "asc" } } } } },
   });
   if (!p) return null;
   if (p.forms.length === 0) return <div className="empty"><h2>Feedback forma još nije objavljena</h2><p>Provjeri ponovo nakon događaja.</p></div>;

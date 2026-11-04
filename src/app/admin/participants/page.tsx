@@ -24,7 +24,7 @@ export default async function Participants({ searchParams }: { searchParams: Pro
       {users.length === 0 ? (
         <div className="empty"><h2>{q ? "Nema rezultata" : "Još se niko nije prijavio"}</h2><p>Korisnici se pojavljuju nakon prve prijave.</p></div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap" role="region" aria-label="Tabela učesnika" tabIndex={0}>
           <table>
             <thead><tr><th>Korisnik</th><th>Uloga</th><th>Glasovi</th><th>Identif. feedback</th><th>Zadnja prijava</th></tr></thead>
             <tbody>

@@ -21,7 +21,7 @@ export default async function Profile() {
     db.feedbackResponse.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
-      include: { form: { select: { title: true, project: { select: { slug: true, name: true } } } } },
+      include: { form: { select: { title: true, project: { select: { slug: true, name: true } } } }, answers: { orderBy: { questionLabel: "asc" } } },
     }),
   ]);
 
@@ -87,13 +87,18 @@ export default async function Profile() {
             <ul className="plain">
               {responses.map((r) => (
                 <li key={r.id}>
-                  <div><b>{r.form.title}</b><small>{r.form.project.name} · {fmt.format(r.createdAt)}</small></div>
+                  <div style={{ flex: 1 }}>
+                    <b>{r.form.title}</b><small>{r.form.project.name} · {fmt.format(r.createdAt)}</small>
+                    <details className="voters"><summary>Pogledaj moje odgovore</summary>
+                      <ul>{r.answers.map((a) => <li key={a.id}>{a.questionLabel}: <b>{a.rating ?? a.text ?? a.choices.join(", ")}</b></li>)}</ul>
+                    </details>
+                  </div>
                   <span className="pill PUBLISHED">Poslano</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="hint" style={{ marginTop: 12 }}>Anonimni feedback se ne vezuje za tvoj račun, pa se ovdje ne prikazuje.</p>
+          <p className="hint" style={{ marginTop: 12 }}>Poslani odgovori se ne mogu mijenjati. Anonimni feedback se ne vezuje za tvoj račun, pa se ovdje ne prikazuje.</p>
         </section>
       </main>
       <SiteFooter />

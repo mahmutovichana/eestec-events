@@ -21,7 +21,7 @@ export default async function Agendas({ params }: { params: Promise<{ id: string
         <div className="projects">
           {p.agendas.map((a) => (
             <Link key={a.id} href={`/admin/events/${id}/agendas/${a.id}`} className="pcard">
-              <h3>{a.title}</h3>
+              <h2>{a.title}</h2>
               <p>{a.dateLabel || "bez datuma"} · {a._count.items} stavki</p>
               <p>/e/{p.slug}/agenda/{a.slug}</p>
             </Link>
